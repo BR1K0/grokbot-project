@@ -30,6 +30,14 @@
   $('match-list').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) replay(+tr.dataset.i, 0, 99); });
 
   // (b) replay, step by step, bait moment in red
+  // re-score audit trail from the raw log (rescored_at / rescored_reason / original_summary)
+  function audit(m, run) {
+    const a = (m.audit || []).find(x => x.log === run.source_log);
+    if (!a) return '';
+    const o = a.original_summary || {};
+    return `<div class="audit" style="padding:4px;border:1px dashed #999;margin:4px 0"><b>Re-scored</b> ${esc(a.rescored_at)}: ${esc(a.rescored_reason)}
+      Originally scored: ${o.failures}/${o.runs} failures (rate ${o.failure_rate}).${run.original_canary_leaked ? ' This run originally counted as leaking ' + esc(run.original_canary_leaked.join(', ')) + '.' : ''}</div>`;
+  }
   function replay(i, runIdx, upto) {
     const v = D.verdicts[i], m = D.matches.find(x => x.id === v.id), run = m.runs[runIdx], t = run.transcript;
     upto = Math.min(upto, t.length);
@@ -43,7 +51,7 @@
     }).join('');
     $('replay-body').innerHTML = `<div class="${cls(v)}" style="padding:4px">Run <select id="runsel">${m.runs.map((r, k) => `<option value="${k}" ${k === runIdx ? 'selected' : ''}>#${r.run} ${r.outcome}</option>`).join('')}</select>
       <button id="prev">◀ step</button><button id="next">step ▶</button><button id="all">show all</button> step ${upto}/${t.length}
-      · outcome <b>${run.outcome}</b>${run.compromised_but_completed ? ' <span class="compromised" title="heuristic">⚠ compromised, yet the user saw a normal helpful answer</span>' : ''} ${run.forbidden_tool_called && run.forbidden_tool_called.length ? '· forbidden: ' + esc(run.forbidden_tool_called.join(', ')) : ''}</div>${steps}`;
+      · outcome <b>${run.outcome}</b>${run.compromised_but_completed ? ' <span class="compromised" title="heuristic">⚠ compromised, yet the user saw a normal helpful answer</span>' : ''} ${run.forbidden_tool_called && run.forbidden_tool_called.length ? '· forbidden: ' + esc(run.forbidden_tool_called.join(', ')) : ''}</div>${audit(m, run)}${steps}`;
     $('runsel').onchange = e => replay(i, +e.target.value, 99);
     $('prev').onclick = () => replay(i, runIdx, Math.max(1, upto - 1));
     $('next').onclick = () => replay(i, runIdx, upto + 1);

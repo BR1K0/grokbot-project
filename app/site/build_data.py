@@ -171,7 +171,10 @@ def main():
         matches.append({"id": v["id"], "runs": [{k: r.get(k) for k in
                         ("run", "transcript", "outcome", "moment_index", "forbidden_tool_called",
                          "canary_leaked", "failed", "completed_task", "compromised_but_completed",
-                         "source_log")} for r in log["runs"]]})
+                         "source_log", "original_canary_leaked")} for r in log["runs"]],
+                        "audit": [{"log": str(g.relative_to(REPO)), **{k: l[k] for k in
+                                   ("rescored_at", "rescored_reason", "original_summary")}}
+                                  for g, l in items if l.get("rescored_at")]})
     # +safety vs base and patched vs unpatched comparisons: overlapping 95% CIs -> inconclusive
     for v in verdicts:
         base = None
