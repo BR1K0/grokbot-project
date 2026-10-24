@@ -305,19 +305,21 @@ typeof window !== 'undefined' && (function () {
   const setRing = (state, label) => { ring.setAttribute('class', 'ring ' + state); $('ring-label').textContent = label; };
   const curRun = () => (st.m && st.m.runs && st.m.runs[st.ri]) || null;
   const steps = () => ((curRun() || {}).transcript || []);
-  function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
+  function stop() { clearInterval(st.timer); st.timer = null; syncPlay(); }
+  // one button state for both replays: Pause while either runs
+  function syncPlay() { const p = $('play'); if (!p) return; p.textContent = (st.timer || (() => { try { return ck.timer; } catch (e) { return null; } })()) ? '❚❚ Pause' : (steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'); }
   function show(k) {
     const run = curRun(), t = steps();
     if (!run) { setRing('neutral', 'no recorded run'); $('stage-step').innerHTML = ''; return; }
     st.k = Math.max(-1, Math.min(k, t.length - 1));
     $('c-pos').textContent = `step ${st.k + 1} of ${t.length}`;
-    const reached = run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1;
+    const reached = (run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1) || $('stage').classList.contains('ring-on');
     const [cls, lab0] = effect(run.outcome);
     const readSecret = ArenaLogic.readSecret(run);
     const lab = (run.outcome === 'TOUCHED_SECRET' && readSecret ? 'Bot read the secret (TOUCHED_SECRET, hard checks): secret accessed' : lab0) + (run.outcome === 'TOOK_THE_BAIT' || run.outcome === 'TOUCHED_SECRET' ? (run.canary_leaked && run.canary_leaked.length ? ` · canary leaked: ${run.canary_leaked.join(', ')}` : '; no recorded canary leak') : '');
     const hc = 'This run · per-run hard check: ';
     if (run.excluded) setRing('neutral', `Run #${run.run} EXCLUDED: ${run.exclusion_reason || 'not scored'}`);
-    else if (st.k < 0) setRing('idle', `Replay of run #${run.run}: press play`);
+    else if (st.k < 0 && !reached) setRing('idle', `Replay of run #${run.run}: press play`);
     else if (reached) setRing(cls, hc + lab); else setRing('pending', 'replaying…');
     leakCard(run, reached);
     const s = t[st.k];
@@ -344,7 +346,7 @@ typeof window !== 'undefined' && (function () {
     if (st.k >= n - 1) show(-1);
     const tick = () => { show(st.k + 1); if (st.k >= steps().length - 1) stop(); };
     tick();
-    if (st.k < n - 1) { $('play').textContent = '❚❚ Pause'; st.timer = setInterval(tick, reduced ? 2200 : 1400); }
+    if (st.k < n - 1) { st.timer = setInterval(tick, reduced ? 2200 : 1400); } syncPlay();
   }
   function evidence(v, run) {
     const t = run.transcript || [];
@@ -403,7 +405,7 @@ typeof window !== 'undefined' && (function () {
     castShow(-1);
   }
   function castShow(k) {
-    ck.k = Math.max(-1, Math.min(k, ck.list.length - 1));
+    ck.k = Math.max(-1, Math.min(k, ck.list.length - 1)); ringVis();
     const e = ck.list[ck.k];
     $('k-pos').textContent = `event ${ck.k + 1} of ${ck.list.length}`;
     $('k-prev').disabled = ck.k < 0; $('k-next').disabled = ck.k >= ck.list.length - 1;
@@ -415,14 +417,18 @@ typeof window !== 'undefined' && (function () {
     const a = $('cast-row').querySelector(`.b-${e.who}`), r0 = $('cast').getBoundingClientRect(), r1 = a.getBoundingClientRect();
     say.style.setProperty('--x', Math.round(r1.left + r1.width / 2 - r0.left - 16) + 'px');
   }
-  function castStop() { clearInterval(ck.timer); ck.timer = null; $('k-play').textContent = ck.k >= ck.list.length - 1 && ck.list.length ? '↻ Again' : '▶ Play'; }
+  function castStop() { clearInterval(ck.timer); ck.timer = null; $('k-play').textContent = ck.k >= ck.list.length - 1 && ck.list.length ? '↻ Again' : '▶ Play'; syncPlay(); }
+  // the big circle is revealed only at the cast's final (outcome) step
+  function ringVis() { const on = ck.list.length > 0 && ck.k >= ck.list.length - 1, was = $('stage').classList.contains('ring-on'); $('stage').classList.toggle('ring-on', on); if (on !== was && curRun()) show(st.k); }
+  // main Play and cast Play drive both replays together
+  function playBoth() { const on = st.timer || ck.timer; if (on) { if (st.timer) stop(); if (ck.timer) castStop(); return; } play(); castPlay(); syncPlay(); }
   function castPlay() {
     if (ck.timer) return castStop();
     if (ck.k >= ck.list.length - 1) castShow(-1);
     const tick = () => { castShow(ck.k + 1); if (ck.k >= ck.list.length - 1) castStop(); };
-    tick(); if (ck.k < ck.list.length - 1) { $('k-play').textContent = '❚❚ Pause'; ck.timer = setInterval(tick, reduced ? 2400 : 1600); }
+    tick(); if (ck.k < ck.list.length - 1) { $('k-play').textContent = '❚❚ Pause'; ck.timer = setInterval(tick, reduced ? 2400 : 1600); } syncPlay();
   }
-  $('k-play').onclick = castPlay;
+  $('k-play').onclick = playBoth;
   $('k-next').onclick = () => { castStop(); castShow(ck.k + 1); };
   $('k-prev').onclick = () => { castStop(); castShow(ck.k - 1); };
   document.addEventListener('keydown', e => {
@@ -518,7 +524,7 @@ typeof window !== 'undefined' && (function () {
       }
       fill();
     };
-    $('play').onclick = play;
+    $('play').onclick = playBoth;
     $('c-restart').onclick = () => { stop(); show(-1); };
     $('c-step').onclick = () => { stop(); show(st.k + 1); };
     $('c-back').onclick = () => { stop(); show(st.k - 1); };

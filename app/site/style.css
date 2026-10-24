@@ -225,3 +225,19 @@ small.code{font:11px var(--mono);color:inherit;opacity:.85;text-transform:none;l
 .cast-note{margin:4px 0 0;font-size:12px}
 @media (max-width:640px){.cast{order:7;padding:12px 10px}.cast-row{gap:2px}.bot-svg{width:44px;height:44px}.bot b{font-size:12px}.bot small{font-size:10px}.cast-ctl{width:100%}.cast-ctl button{flex:1}}
 @media (prefers-reduced-motion:reduce){.bot.active{transform:none}.bot.active .bot-svg{transform:none}}
+/* cast above the match; circle revealed only at the cast's final outcome step */
+.stage>.cast{order:-1;grid-column:1/-1}
+.stage{grid-template-columns:1fr}.stage>.stage-ring{display:none}
+.stage.ring-on{grid-template-columns:minmax(220px,340px) 1fr}.stage.ring-on>.stage-ring{display:block;animation:ringin .6s ease-out both}
+@keyframes ringin{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.leak-card{margin:0 0 12px}
+.cast-row{display:flex;justify-content:space-between;gap:12px}
+.cast-row .bot{flex:1 1 0}
+.bot-svg{width:80px;height:80px}
+.bot b{font-size:15px}.bot small{font-size:12.5px;color:var(--muted)}
+.cast-say{width:100%;box-sizing:border-box}
+@media (max-width:640px){.stage>.cast{order:0}.cast-row{gap:4px}.bot-svg{width:56px;height:56px}.bot b{font-size:13px}.bot small{font-size:11px}
+ .stage:not(.ring-on)>.stage-ring{display:none}.stage.ring-on>.stage-ring{display:block}}
+@media (prefers-reduced-motion:reduce){.stage.ring-on>.stage-ring{animation:none}}
+.cast-row{align-items:flex-start}.stage.ring-on>.stage-ring{align-self:start}
+@media (max-width:640px){.cast-row{gap:6px}.bot b{font-size:12px}}
