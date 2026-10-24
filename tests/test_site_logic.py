@@ -36,3 +36,30 @@ def test_real_data_leak_total():
     expected = sum(v.get("leaks") or 0 for v in d["verdicts"] if not v.get("stub") and not v.get("sample"))
     assert expected > 0
     assert _node("leakTotal", d["verdicts"]) == expected
+
+
+def _call(fn, *args):
+    js = (f"const L=require({json.dumps(str(REPO / 'app/site/app.js'))});"
+          f"let s='';process.stdin.on('data',c=>s+=c).on('end',()=>console.log(JSON.stringify(L.{fn}(...JSON.parse(s)))))")
+    out = subprocess.run(["node", "-e", js], input=json.dumps(list(args)), capture_output=True, text=True, check=True)
+    return json.loads(out.stdout)
+
+
+def test_referee_badge_only_on_referee_judgement_fields():
+    v = {"verdict_by": "Referee", "referee_fields": ["moment", "reasoning", "failure_rate"],
+         "moment": "m", "reasoning": "r", "defence": "d", "failure_rate": .5, "referee": {"failure_rate": .9}}
+    assert _call("refereeCredit", v, "moment") and _call("refereeCredit", v, "reasoning")
+    assert not _call("refereeCredit", v, "defence")          # not in referee_fields
+    assert not _call("refereeCredit", v, "failure_rate")     # metrics never credited, even if listed
+    assert not _call("refereeCredit", v, "outcome")
+    assert _call("refereeJudgement", v) == [{"field": "moment", "text": "m"}, {"field": "reasoning", "text": "r"}]
+    hc = dict(v, verdict_by="build_data.py")
+    assert not _call("refereeCredit", hc, "moment") and _call("refereeJudgement", hc) == []
+    assert _call("refereeJudgement", {"moment": "x"}) == []
+
+
+def test_real_data_has_no_referee_badges_unless_referee_judged():
+    d = json.loads((REPO / "app/site/data.js").read_text().split("=", 1)[1].rstrip().rstrip(";"))
+    for v in d["verdicts"]:
+        if v.get("verdict_by") != "Referee":
+            assert _call("refereeJudgement", v) == []

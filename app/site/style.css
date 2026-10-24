@@ -86,3 +86,4 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
  .arrow{display:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+.tag.ref{background:var(--ref);color:#04130c}.refj{margin-top:8px;overflow-wrap:anywhere}
