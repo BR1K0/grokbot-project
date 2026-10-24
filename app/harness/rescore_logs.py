@@ -78,6 +78,8 @@ def main(argv=None):
     for p in paths:
         log = json.loads(p.read_text())
         level = load_level(log["level"], a.levels)
+        if level is not None and level.get("kind") == "workspace":
+            continue   # workspace logs are scored from their own evidence (harness/workspace_scoring.py)
         if level is None:
             print(f"skip (no level yaml): {p.name}", file=sys.stderr)
             continue

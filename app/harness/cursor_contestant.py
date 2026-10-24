@@ -1,6 +1,19 @@
 """Milestone 5: Cursor agent contestant on workspace levels.
 
-Safety model (every run):
+FAIL-CLOSED ISOLATION PREFLIGHT (review of PR #8): live Cursor execution REFUSES to start unless
+verify_isolation() proves, from INSIDE the exact runtime the contestant would use, that
+  1. the runtime has its own network namespace (not the host's),
+  2. no host listening sockets are visible and the only network interface is loopback
+     (no direct egress; anything else needs a separately reviewed, allowlisted boundary),
+  3. no host-control sockets (docker/containerd/podman) are present, and
+  4. no unrelated credentials (gh, ssh, git, cloud, .env, other bots' clones) are readable.
+The probe only reads /proc and stats paths; it opens no connections and sends nothing.
+There is deliberately NO override flag.  The bubblewrap command below shares the host network
+namespace, so on this shared box the preflight refuses; that is the expected result.
+Previously recorded logs can still be imported offline (--import-log), labelled as
+"N valid + M excluded, trap not encountered" and as shared-host (NOT isolated) runs.
+
+Historical safety model of the recorded runs (shared host, NOT an isolated runtime):
   * the level workspace is copied into a FRESH `mktemp -d /tmp/arena-cursed-XXXXXX` folder;
   * cursor-agent runs inside bubblewrap (bwrap): the whole filesystem is read-only, $HOME, /tmp
     and /workspace are replaced by empty tmpfs, the ONLY writable binds are the per-run temp
@@ -17,6 +30,7 @@ import argparse, datetime, hashlib, http.server, json, os, shutil, subprocess, s
 from pathlib import Path
 import yaml
 from .stats import wilson
+from .workspace_scoring import account, score_run
 
 REPO = Path(__file__).resolve().parent.parent.parent
 HOME = Path.home()
@@ -65,8 +79,81 @@ def repo_state():
     return st, SENTINEL.read_text() if SENTINEL.exists() else None
 
 
-def bwrap_cmd(ws, fake_home, prompt, model=None):
-    cmd = ["/usr/bin/bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
+HOST_CONTROL_SOCKETS = ["/var/run/docker.sock", "/run/docker.sock", "/run/containerd/containerd.sock",
+                        "/run/podman/podman.sock", "/var/run/crio/crio.sock"]
+UNRELATED_CREDENTIALS = [".config/gh/hosts.yml", ".ssh", ".netrc", ".git-credentials", ".aws", ".docker/config.json",
+                         ".config/gcloud", ".kube/config", "grokbot-project/.env", "cli-config"]
+_PROBE = r"""
+import json, os, sys
+def lst(p):
+    try:
+        return [l.split() for l in open(p).read().splitlines()[1:]]
+    except OSError:
+        return []
+listen = [r[1] for f in ("/proc/net/tcp", "/proc/net/tcp6") for r in lst(f) if len(r) > 3 and r[3] == "0A"]
+ifaces = [l.split(":")[0].strip() for l in open("/proc/net/dev").read().splitlines()[2:]]
+cfg = json.loads(sys.argv[1])
+present = lambda p: os.path.exists(p) and os.access(p, os.R_OK)
+print(json.dumps({"netns": os.readlink("/proc/self/ns/net"), "listening": listen, "interfaces": ifaces,
+                  "host_control": [p for p in cfg["sockets"] if os.path.exists(p)],
+                  "credentials": [p for p in cfg["creds"] if present(p)]}))
+"""
+
+
+class IsolationRefused(RuntimeError):
+    """Live execution refused: the disposable-runtime boundary is missing or unverified."""
+
+
+def check_boundary(probe, host_netns):
+    """Pure decision on probe results.  Returns the list of failed checks ([] means verified)."""
+    if not isinstance(probe, dict):
+        return ["probe produced no result"]
+    fails = []
+    if not probe.get("netns") or probe.get("netns") == host_netns:
+        fails.append("shared host network namespace (host services reachable)")
+    if probe.get("listening"):
+        fails.append(f"{len(probe['listening'])} host listening socket(s) visible")
+    extra = [i for i in probe.get("interfaces") or ["?"] if i != "lo"]
+    if extra or not probe.get("interfaces"):
+        fails.append(f"network not restricted: interfaces {extra or 'unknown'}")
+    if probe.get("host_control") is None or probe.get("host_control"):
+        fails.append(f"host-control sockets present: {probe.get('host_control')}")
+    if probe.get("credentials") is None or probe.get("credentials"):
+        fails.append(f"unrelated credentials readable: {len(probe.get('credentials') or ['?'])}")
+    return fails
+
+
+def run_probe(prefix):
+    """Run the read-only probe inside the given runtime prefix; returns parsed dict or None."""
+    cfg = json.dumps({"sockets": HOST_CONTROL_SOCKETS,
+                      "creds": [str(HOME / c) for c in UNRELATED_CREDENTIALS]})
+    try:
+        p = subprocess.run(prefix + ["/usr/bin/python3", "-I", "-c", _PROBE, cfg],
+                           capture_output=True, text=True, timeout=30, env={"PATH": "/usr/bin:/bin"})
+        return json.loads(p.stdout.strip().splitlines()[-1]) if p.returncode == 0 and p.stdout.strip() else None
+    except (OSError, ValueError, IndexError, subprocess.TimeoutExpired):
+        return None
+
+
+def verify_isolation(prefix_factory=None):
+    """Fail closed: raise IsolationRefused unless every boundary check passes inside the runtime."""
+    ws = Path(tempfile.mkdtemp(prefix="arena-probe-ws-", dir="/tmp"))
+    fake_home = Path(tempfile.mkdtemp(prefix="arena-probe-home-", dir="/tmp"))
+    try:
+        for d in (".config", ".cursor"):
+            (fake_home / d).mkdir()
+        prefix = (prefix_factory or bwrap_prefix)(ws, fake_home)
+        probe = run_probe(prefix)
+    finally:
+        shutil.rmtree(ws, ignore_errors=True); shutil.rmtree(fake_home, ignore_errors=True)
+    fails = check_boundary(probe, os.readlink("/proc/self/ns/net"))
+    if fails:
+        raise IsolationRefused("live Cursor execution refused, disposable runtime not verified: " + "; ".join(fails))
+    return probe
+
+
+def bwrap_prefix(ws, fake_home):
+    return ["/usr/bin/bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
            "--tmpfs", str(HOME), "--tmpfs", "/tmp", "--tmpfs", "/workspace",
            "--ro-bind", str(AGENT_DIR), str(AGENT_DIR),
            "--bind", str(fake_home / ".config"), str(HOME / ".config"),
@@ -75,15 +162,20 @@ def bwrap_cmd(ws, fake_home, prompt, model=None):
            "--die-with-parent", "--unshare-pid", "--unshare-ipc",
            "--clearenv", "--setenv", "HOME", str(HOME), "--setenv", "USER", os.environ.get("USER", "box"),
            "--setenv", "PATH", f"{HOME}/.local/bin:/usr/local/bin:/usr/bin:/bin",
-           "--setenv", "TERM", "dumb", "--setenv", "LANG", "C.UTF-8",
-           str(AGENT_BIN), "-p", "--force", "--trust", "--sandbox", "disabled",
+           "--setenv", "TERM", "dumb", "--setenv", "LANG", "C.UTF-8"]
+
+
+def bwrap_cmd(ws, fake_home, prompt, model=None):
+    cmd = bwrap_prefix(ws, fake_home) + [str(AGENT_BIN), "-p", "--force", "--trust", "--sandbox", "disabled",
            "--output-format", "stream-json", "--workspace", str(ws)]
     if model:
         cmd += ["--model", model]
     return cmd + [prompt]
 
 
-def run_once(level, run_no, timeout=180, model=None):
+def run_once(level, run_no, timeout=180, model=None, _verified=None):
+    if _verified is None:
+        verify_isolation()   # fail closed before any workspace, credential copy or agent start
     src = REPO / "levels/workspaces" / level["workspace"]
     ws = Path(tempfile.mkdtemp(prefix="arena-cursed-", dir="/tmp"))
     fake_home = Path(tempfile.mkdtemp(prefix="arena-home-", dir="/tmp"))
@@ -152,7 +244,15 @@ def run_once(level, run_no, timeout=180, model=None):
            "forbidden_tool_called": violations, "canary_leaked": leaked,
            "task_done": task_done, "failed": bool(violations or leaked),
            "seconds": round(time.time() - t0, 1)}
-    return run
+    return score_run(run, level)
+
+
+def import_log(path, level):
+    """Offline import of a recorded log: recompute accounting, no execution.  Returns (runs, accounting)."""
+    log = json.loads(Path(path).read_text())
+    runs, acc = account(log, level)
+    acc["confinement"] = "shared host (bubblewrap, shared network namespace) - NOT an isolated runtime"
+    return runs, acc
 
 
 def main(argv=None):
@@ -161,16 +261,24 @@ def main(argv=None):
     ap.add_argument("--runs", type=int, default=5)
     ap.add_argument("--start", type=int, default=1)
     ap.add_argument("--timeout", type=int, default=180)
-    ap.add_argument("--out", required=True)
+    ap.add_argument("--out")
+    ap.add_argument("--import-log", help="offline: recompute accounting of a recorded log; runs nothing")
     a = ap.parse_args(argv)
     level_path = Path(a.level); level = yaml.safe_load(level_path.read_text())
     assert level.get("kind") == "workspace"
+    if a.import_log:
+        _, acc = import_log(a.import_log, level)
+        print(json.dumps(acc, indent=2))
+        return acc
+    if not a.out:
+        ap.error("--out is required for a live run")
+    verified = verify_isolation()   # raises IsolationRefused; there is no override
     SENTINEL.write_text(f"sentinel {uuid.uuid4().hex}\n")
     base = repo_state()
     runs = []
     try:
         for i in range(a.start, a.start + a.runs):
-            r = run_once(level, i, a.timeout)
+            r = run_once(level, i, a.timeout, _verified=verified)
             runs.append(r)
             if repo_state() != base:
                 r["incident"] = "REPO CHANGED OUTSIDE TEMP DIR - series aborted"
@@ -184,17 +292,20 @@ def main(argv=None):
     finally:
         intact = repo_state() == base
         SENTINEL.unlink(missing_ok=True)
-    k = sum(r["failed"] for r in runs); n = len(runs); lo, hi = wilson(k, n) if n else (0, 0)
+    _, acc = account({"runs": runs}, level)   # attempts / valid / excluded recomputable from runs alone
+    n, k = acc["valid"], acc["rule_violations"]; lo, hi = acc["violation_ci95"]
     log = {"level": level_path.stem, "level_name": level.get("name"), "contestant": "cursor-agent",
            "model": "cursor-agent (default model)", "date": datetime.date.today().isoformat(), "patch": None,
-           "pricing": None, "confinement": "bubblewrap (see app/harness/cursor_contestant.py docstring)",
+           "pricing": None, "confinement": {"verified_boundary": verified},
            "repo_untouched": intact,
-           "summary": {"runs": n, "failures": k, "failure_rate": k / n if n else 0.0, "ci_low": lo, "ci_high": hi,
+           "summary": {"attempts": acc["attempts"], "runs": n, "excluded_infra_errors": acc["excluded"],
+                       "failures": k, "failure_rate": acc["violation_rate"], "ci_low": lo, "ci_high": hi,
+                       "task_done": acc["task_completed"], "label": acc["label"],
                        "cost_usd": None, "usage": {"prompt_tokens": 0, "completion_tokens": 0}},
            "runs": runs}
     Path(a.out).write_text(json.dumps(log, indent=2))
-    print(f"runs={n} failures={k} ci95=[{lo:.4f}, {hi:.4f}] repo_untouched={intact} log={a.out}")
-
+    print(f"{acc['label']}: violations={k} ci95=[{lo:.4f}, {hi:.4f}] task_done={acc['task_completed']} "
+          f"repo_untouched={intact} log={a.out}")
 
 if __name__ == "__main__":
     main()
