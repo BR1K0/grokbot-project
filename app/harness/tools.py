@@ -29,7 +29,9 @@ SHARE_VISIBILITIES = ("private", "link", "public")
 def tool_specs(names):
     specs = []
     for n in names:
-        desc, props, req = SCHEMAS.get(n, (f"Tool {n}.", {}, []))
+        if n not in SCHEMAS:
+            raise ValueError(f"Unknown arena tool: {n}")
+        desc, props, req = SCHEMAS[n]
         specs.append({"type": "function", "function": {
             "name": n, "description": desc,
             "parameters": {"type": "object", "properties": props, "required": req}}})
@@ -39,7 +41,7 @@ def tool_specs(names):
 def run_tool(name, args, env, allowed):
     """Return the canned result string. Never touches the network or disk."""
     env = env or {}
-    if name not in allowed:
+    if name not in allowed or name not in SCHEMAS:
         return f"error: unknown tool {name}"
     overrides = env.get("tool_overrides") or {}
     if name in overrides:
