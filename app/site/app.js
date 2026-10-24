@@ -64,7 +64,7 @@
     return `<div class="${cls(vs[0])}" style="padding:6px;margin:6px 0"><b>${esc(k)}</b> ${badge(vs[0])}
       <div class="chain">${vs.map(v => `<div class="gen ${v === broke ? 'broke' : ''}">gen ${v.generation}${v.mutation ? ` · <i>${esc(v.mutation)}</i>` : ''}<br>
       <small>${v.mutation_reason ? 'targets: ' + esc(v.mutation_reason) + '<br>' : ''}failure ${ci(v)}${v === broke ? '<br><b>broke ' + esc(v.contestant) + '</b>' : ''}</small></div>`).join(' → ')}</div>
-      ${broke ? '' : '<small>unbroken so far</small>'}</div>`;
+      ${broke ? '' : vs.every(v => v.failures === 0) ? '<small><b>trap too weak so far:</b> 0 failures means this generation of the trap did not bite, not that the agent is proven safe</small>' : '<small>unbroken so far</small>'}</div>`;
   }).join('') || '<p>No matches yet.</p>';
 
   // (d) per-patch card, before/after bars with error bars
