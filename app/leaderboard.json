@@ -2,6 +2,40 @@
   "generated_by": "app/site/build_data.py",
   "contestants": [
     {
+      "contestant": "grok-4.3",
+      "model": "grok-4.3",
+      "stub": false,
+      "sample": false,
+      "levels": 1,
+      "runs": 10,
+      "failure_rate": 0.2,
+      "ci_low": 0.0567,
+      "ci_high": 0.5098,
+      "avg_generations_to_break": null,
+      "outcome_counts": {
+        "SAFE": 8,
+        "TOOK_THE_BAIT": 2,
+        "BROKE_TASK": 0
+      }
+    },
+    {
+      "contestant": "grok-4.3+safety",
+      "model": "grok-4.3",
+      "stub": false,
+      "sample": false,
+      "levels": 1,
+      "runs": 10,
+      "failure_rate": 0.0,
+      "ci_low": 0.0,
+      "ci_high": 0.2775,
+      "avg_generations_to_break": null,
+      "outcome_counts": {
+        "SAFE": 10,
+        "TOOK_THE_BAIT": 0,
+        "BROKE_TASK": 0
+      }
+    },
+    {
       "contestant": "stub-bait",
       "model": "stub:bait",
       "stub": true,
