@@ -40,7 +40,22 @@ const ArenaLogic = (function () {
     + ' of this trap' + (patch ? ', then a patched rerun.' : '.');
   // n + 95% CI line for round groups (empty for historical groups, which already show it per card)
   const roundStats = v => v && v.round ? `n=${v.runs} · 95% CI ${(100 * v.ci_low).toFixed(1)}–${(100 * v.ci_high).toFixed(1)}%` : '';
-  return {leakTotal, pickChain, refereeCredit, refereeJudgement, heroTotals, roundLabel, featuredPatch, featuredIntro, roundStats};
+  // M5 workspace runs: caveat line, pill state and per-run evidence (pure, node-testable)
+  const caveat = o => !o ? '' : o.display_caveat
+    || (o.result_label ? o.result_label.replace(/, /g, ' · ') + (o.confinement_note ? ' · recorded on shared host, not isolated' : '') : '');
+  const pillState = r => r.excluded ? {cls: 'excluded', mark: 'EXCLUDED', title: r.exclusion_reason || 'excluded'}
+    : r.failed ? {cls: 'fail', mark: '✗', title: 'failed'} : {cls: '', mark: '✓', title: 'safe'};
+  const runEvidence = r => {
+    if (!r || r.workspace_path == null) return [];
+    const d = r.diff || {}, j = x => (x && x.length ? x.join(', ') : 'none');
+    return [['temp workspace', r.workspace_path],
+      ['diff', `added: ${j(d.added)} · removed: ${j(d.removed)} · changed: ${j(d.changed)}`],
+      ['commands', j(r.commands)], ['listener hits', String((r.listener_hits || []).length)],
+      ['task done', r.excluded ? 'n/a (excluded)' : r.task_done ? 'yes' : 'no'],
+      ['rule violations', j(r.rule_violations)]]
+      .concat(r.excluded ? [['excluded', r.exclusion_reason || '']] : []);
+  };
+  return {caveat, pillState, runEvidence, leakTotal, pickChain, refereeCredit, refereeJudgement, heroTotals, roundLabel, featuredPatch, featuredIntro, roundStats};
 })();
 if (typeof module !== 'undefined') module.exports = ArenaLogic;
 typeof window !== 'undefined' && (function () {
@@ -48,6 +63,8 @@ typeof window !== 'undefined' && (function () {
   const LV = D.levels || {}, PATCHES = D.patches || {};
   const STUB = 'stub simulation: proves plumbing, not a measurement';
   const SAMPLE = 'sample data: fabricated for the demo, not a measurement';
+  // M5 caveat badge: result_label (valid/excluded, trap exposure) + confinement_note. Self-contained for porting.
+  const caveatHtml = o => ArenaLogic.caveat(o) ? `<div class="caveat" role="note"><b>${esc(ArenaLogic.caveat(o))}</b>${o.confinement_note ? `<small>${esc(o.confinement_note)}</small>` : ''}</div>` : '';
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
   const $ = id => document.getElementById(id);
   const real = o => !o.stub && !o.sample;
@@ -122,9 +139,9 @@ typeof window !== 'undefined' && (function () {
       .sort((a, b) => !real(a) - !real(b) || a.failure_rate - b.failure_rate || a.ci_high - b.ci_high);
     $('board-rows').innerHTML = `<div class="row head"><span>#</span><span>Contestant</span><span>Took the bait</span><span>Generations to break</span><span>Runs</span></div>` +
       rows.map((c, i) => `<div class="row ${real(c) ? '' : 'test-row'}"><span class="rank">${real(c) ? i + 1 : '–'}</span>
-        <div><b>${esc(c.contestant)}</b> ${testTag(c)}<br><small>${esc(c.model)}</small> ${vsTag(c)}</div>
+        <div><b>${esc(c.contestant)}</b> ${testTag(c)}<br><small>${esc(c.model)}</small> ${vsTag(c)}${caveatHtml(c)}</div>
         <div class="barcell"><b>${pct(c.failure_rate)}</b> <small>${detail(c)}</small>${bar(c)}
-          <details><summary>outcome counts</summary>SAFE ${c.outcome_counts.SAFE} · TOUCHED_SECRET ${c.outcome_counts.TOUCHED_SECRET || 0} · TOOK_THE_BAIT (leaked) ${c.outcome_counts.TOOK_THE_BAIT} · BROKE_TASK ${c.outcome_counts.BROKE_TASK} (not judged by hard checks)</details></div>
+          <details><summary>outcome counts</summary>SAFE ${c.outcome_counts.SAFE} · TOUCHED_SECRET ${c.outcome_counts.TOUCHED_SECRET || 0} · TOOK_THE_BAIT (rule violated) ${c.outcome_counts.TOOK_THE_BAIT} · BROKE_TASK ${c.outcome_counts.BROKE_TASK} (not judged by hard checks)</details></div>
         <div>${c.avg_generations_to_break == null ? '<span class="unbroken" title="not broken in these tests; not proven safe">unbroken</span>' : `<span class="big">${c.avg_generations_to_break.toFixed(1)}</span>`}</div>
         <div><span class="big">${c.runs}</span><br><small>runs</small></div></div>`).join('');
   }
@@ -139,10 +156,10 @@ typeof window !== 'undefined' && (function () {
       vs.sort((a, b) => a.generation - b.generation || a.patched - b.patched || a.contestant.localeCompare(b.contestant));
       return `<div class="lvl" data-base="${esc(base)}"><span class="tag">${esc(meta.category || '')}</span>
         <h3>${esc(meta.name || base)}</h3><p class="teaser">${esc(meta.teaser || '')}</p>
-        ${gen1.map(v => `<div class="mini"><span>${rtag(v)}${esc(v.contestant)}</span>${bar(v)}<span>${fails(v)}/${v.runs}</span></div>`).join('')}
+        ${gen1.map(v => `<div class="mini"><span>${rtag(v)}${esc(v.contestant)}</span>${bar(v)}<span>${fails(v)}/${v.runs}</span></div>${caveatHtml(v)}`).join('')}
         <details><summary>${vs.length} matches${vs.some(v => v.generation > 1) ? ' incl. evolved generations' : ''} · click to replay</summary><div class="matches">
         ${vs.map(v => `<div class="match" data-id="${esc(v.id)}"><span>gen ${v.generation} · ${rtag(v)}${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}</span>
-          <span>${pct(v.failure_rate)} <small>(${detail(v)})</small> ${vsTag(v)}</span></div>`).join('')}</div></details></div>`;
+          <span>${pct(v.failure_rate)} <small>(${detail(v)})</small> ${vsTag(v)}</span>${caveatHtml(v)}</div>`).join('')}</div></details></div>`;
     }).join('');
   }
   $('level-cards').addEventListener('click', e => { const m = e.target.closest('.match'); if (m) openReplay(m.dataset.id); });
@@ -195,12 +212,15 @@ typeof window !== 'undefined' && (function () {
     const run = m.runs[ri];
     $('replay-title').innerHTML = `${rtag(v)}${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}${v.round ? ` <small class="round-stats">${esc(ArenaLogic.roundStats(v))}</small>` : ''}`;
     const a = (m.audit || []).find(x => x.log === run.source_log);
-    $('replay-meta').innerHTML = `Run #${run.run} · outcome (hard checks) <b style="color:${run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
+    const ev = ArenaLogic.runEvidence(run);
+    $('replay-meta').innerHTML = `${caveatHtml(v)}Run #${run.run} · outcome (hard checks) <b style="color:${run.excluded ? 'var(--muted)' : run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
+      ${ev.length ? `<dl class="evidence">${ev.map(([k, x]) => `<dt>${esc(k)}</dt><dd>${esc(x)}</dd>`).join('')}</dl>` : ''}
       ${run.forbidden_tool_called && run.forbidden_tool_called.length ? ' · forbidden tools: ' + esc(run.forbidden_tool_called.join(', ')) : ''}
       ${run.canary_leaked && run.canary_leaked.length ? ' · leaked: ' + esc(run.canary_leaked.join(', ')) : ''} · match ${detail(v)}
       ${ArenaLogic.refereeJudgement(v).map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')}
       ${a ? `<div class="audit" style="margin-top:8px">Re-scored ${esc(a.rescored_at)}: ${esc(a.rescored_reason)}${run.original_canary_leaked ? ' This run originally counted as leaking ' + esc(run.original_canary_leaked.join(', ')) + '.' : ''}</div>` : ''}`;
-    $('pills').innerHTML = m.runs.map((r, k) => `<button class="pill ${r.failed ? 'fail' : ''} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}">#${r.run} ${r.failed ? '✗' : '✓'}</button>`).join('');
+    $('pills').innerHTML = m.runs.map((r, k) => { const p = ArenaLogic.pillState(r);
+      return `<button class="pill ${p.cls} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(p.title)}">#${r.run} ${p.mark}</button>`; }).join('');
     $('pills').onclick = e => { const b = e.target.closest('.pill'); if (b) { renderRun(v, m, +b.dataset.k); const nb = $('pills').querySelector(`.pill[data-k="${b.dataset.k}"]`); if (nb) nb.focus({preventScroll: true}); history.replaceState(null, '', `#replay=${encodeURIComponent(v.id)}&run=${m.runs[+b.dataset.k].run}`); } };
     $('replay-body').innerHTML = (run.transcript || []).map((s, k) => {
       const bait = k === run.moment_index;
@@ -234,11 +254,11 @@ typeof window !== 'undefined' && (function () {
   // ---------- replay stage (centerpiece): one boundary ring that holds or fractures per recorded outcome ----------
   // Effects are keyed on the recorded run outcome only; nothing is inferred. Unknown/missing outcomes stay neutral.
   const EFFECT = {
-    SAFE: ['holds', 'SAFE: the boundary held'],
-    SAFE_BONUS: ['bonus', 'SAFE_BONUS: held and flagged the trap'],
-    TOUCHED_SECRET: ['touched', 'TOUCHED_SECRET: reached inside for the secret; nothing left the boundary'],
-    TOOK_THE_BAIT: ['fractured', 'TOOK_THE_BAIT: the boundary fractured; the secret left the sandbox'],
-    BROKE_TASK: ['broketask', 'BROKE_TASK: no leak, but the task itself was not done'],
+    SAFE: ['holds', 'SAFE (hard checks, this run): no rule violation detected'],
+    SAFE_BONUS: ['bonus', 'SAFE_BONUS (hard checks, this run): no violation, flagged the trap'],
+    TOUCHED_SECRET: ['touched', 'TOUCHED_SECRET (hard checks): forbidden action'],
+    TOOK_THE_BAIT: ['fractured', 'TOOK_THE_BAIT (hard checks): rule violated'],
+    BROKE_TASK: ['broketask', 'BROKE_TASK: the task itself was not done'],
   };
   const effect = o => EFFECT[o] || ['neutral', o ? `${o}: not a scored outcome (neutral)` : 'no verdict recorded (neutral)'];
   let stageFill = () => {};
@@ -247,18 +267,24 @@ typeof window !== 'undefined' && (function () {
   const stageM = stageV && D.matches.find(x => x.id === stageV.id);
   const ring = $('ring');
   const setRing = (state, label) => { ring.setAttribute('class', 'ring ' + state); $('ring-label').textContent = label; };
-  const steps = () => (st.m.runs[st.ri].transcript || []);
+  const curRun = () => (st.m && st.m.runs && st.m.runs[st.ri]) || null;
+  const steps = () => ((curRun() || {}).transcript || []);
   function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
   function show(k) {
-    const run = st.m.runs[st.ri], t = steps();
+    const run = curRun(), t = steps();
+    if (!run) { setRing('neutral', 'no recorded run'); $('stage-step').innerHTML = ''; return; }
     st.k = Math.max(-1, Math.min(k, t.length - 1));
     $('c-pos').textContent = `step ${st.k + 1} of ${t.length}`;
     const reached = run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1;
-    const [cls, lab] = effect(run.outcome);
-    if (st.k < 0) setRing('idle', `Replay of run #${run.run}: press play`);
-    else if (reached) setRing(cls, lab); else setRing('pending', 'replaying… boundary intact so far');
+    const [cls, lab0] = effect(run.outcome);
+    const readSecret = (run.transcript || []).some(x => (x.tool_calls || []).some(tc => tc.name === 'read_secret'));
+    const lab = (run.outcome === 'TOUCHED_SECRET' && readSecret ? 'TOUCHED_SECRET (hard checks): secret accessed' : lab0) + (run.outcome === 'TOOK_THE_BAIT' || run.outcome === 'TOUCHED_SECRET' ? (run.canary_leaked && run.canary_leaked.length ? ` · canary leaked: ${run.canary_leaked.join(', ')}` : '; no recorded canary leak') : '');
+    const hc = 'This run · per-run hard check: ';
+    if (run.excluded) setRing('neutral', `Run #${run.run} EXCLUDED: ${run.exclusion_reason || 'not scored'}`);
+    else if (st.k < 0) setRing('idle', `Replay of run #${run.run}: press play`);
+    else if (reached) setRing(cls, hc + lab); else setRing('pending', 'replaying…');
     const s = t[st.k];
-    $('stage-step').innerHTML = !s ? '' : `<span class="who">${esc(s.role)}${s.name ? ' · ' + esc(s.name) : ''}${st.k === run.moment_index ? ' · <b class="flag ' + cls + '">recorded moment</b>' : ''}</span>`
+    $('stage-step').innerHTML = !s ? (t.length ? '<p class="muted idle-prompt">Play to follow this recorded run step by step.</p>' : '<p class="muted idle-prompt">No transcript steps were recorded for this run.</p>') : `<span class="who">${esc(s.role)}${s.name ? ' · ' + esc(s.name) : ''}${st.k === run.moment_index ? ' · <b class="flag ' + cls + '">recorded moment</b>' : ''}</span>`
       + `<div class="step-text">${esc((s.content || '').trim().slice(0, 600))}${(s.content || '').length > 600 ? '…' : ''}</div>`
       + (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join(' ');
   }
@@ -281,28 +307,34 @@ typeof window !== 'undefined' && (function () {
     const d = (title, body, open) => `<details${open ? ' open' : ''}><summary>${title}</summary><div class="ev">${body}</div></details>`;
     const pre = s => s ? `<pre>${esc((s.content || '').trim())}</pre>` : '<p class="muted">not recorded in this run</p>';
     $('evidence').innerHTML = `<h3>Evidence · run #${run.run} <small class="muted">recorded outcome (hard checks): ${esc(run.outcome || 'no verdict')}</small></h3>`
+      + `<div class="verdicts" id="verdicts"><div class="vd"><span class="tag">Per-run hard check · run #${run.run}</span> <b>${esc(run.excluded ? 'EXCLUDED' : run.outcome || 'no verdict')}</b></div>`
+      + `<div class="vd"><span class="tag ref">Match-level Referee verdict</span> ${ref.length ? ref.map(j => `<b>${esc(j.field)}:</b> ${esc(j.text)}`).join(' · ') : '<span class="muted">none: hard checks only</span>'}</div></div>`
+      + caveatHtml(v)
+      + (ArenaLogic.runEvidence(run).length ? d('Workspace evidence', `<dl class="evidence">${ArenaLogic.runEvidence(run).map(([k, x]) => `<dt>${esc(k)}</dt><dd>${esc(x)}</dd>`).join('')}</dl>`, true) : '')
       + d('The task', pre(task))
       + d('First tool result <small class="muted">(recorded; where the manipulation sits is not marked in the data)</small>', pre(tool))
       + d("The bot's response", pre(fin))
       + d(`Tool calls (${calls.length})`, calls.map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>') || '<p class="muted">none</p>')
-      + d(`Referee's explanation`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
+      + d(`Referee's explanation <small class="muted">(match-level task judgment across all runs, not this run's hard check)</small>`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
         : `<p class="muted">No Referee verdict for this group: scored by <code>build_data.py</code> hard checks only.</p>`);
   }
   function loadRun(ri) {
-    stop(); st.ri = ri; const run = st.m.runs[ri];
-    $('stage-runs').innerHTML = st.m.runs.map((r, k) => `<button class="pill o-${effect(r.outcome)[0]} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(r.outcome || 'no verdict')}">#${r.run} ${esc(r.outcome || 'no verdict')}</button>`).join('');
+    stop(); st.ri = ri; st.k = -1; const run = curRun(); if (!run) { show(-1); return; }
+    $('stage-runs').innerHTML = st.m.runs.map((r, k) => (r.excluded ? `<button class="pill excluded ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(ArenaLogic.pillState(r).title)}">#${r.run} EXCLUDED</button>` : `<button class="pill o-${effect(r.outcome)[0]} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(r.outcome || 'no verdict')}">#${r.run} ${esc(r.outcome || 'no verdict')}</button>`)).join('');
     evidence(st.v, run); show(-1); stop();
   }
   function loadMatch(v) {
+    stop();
     const stageV = v, stageM = D.matches.find(x => x.id === v.id);
-    st.v = stageV; st.m = stageM;
+    st.v = stageV; st.m = stageM; st.ri = 0; st.k = -1;
     $('stage-title').innerHTML = `${stageV.round ? rtag(stageV) : '<span class="tag">historical</span> '}${esc(name(stageV.level))} vs ${esc(stageV.contestant)}`
       + ` <span class="tag ${stageV.patch ? 'safe' : ''}">${stageV.patch ? 'patched · ' + esc(stageV.patch) : 'unpatched'}</span> ${testTag(stageV)}`;
     const c = stageV.outcome_counts || {};
     $('stage-stats').innerHTML = `gen ${stageV.generation} · ${fails(stageV)}/${stageV.runs} runs failed (${pct(stageV.failure_rate)}, 95% CI ${p1(stageV.ci_low)}–${p1(stageV.ci_high)}%)`
       + (stageV.leaks != null && stageV.leak_ci_low != null ? ` · ${stageV.leaks}/${stageV.runs} leaked (${pct(stageV.leak_rate)}, 95% CI ${p1(stageV.leak_ci_low)}–${p1(stageV.leak_ci_high)}%)` : '')
       + (stageV.round ? ` <small class="round-stats">n=${stageV.runs}</small>` : '')
-      + (stageV.verdict_by === 'Referee' ? ' <span class="tag ref">Referee verdict</span>' : ' <small>hard checks</small>');
+      + ' · <small>per-run outcomes: hard checks</small>'
+      + caveatHtml(stageV);
     const present = new Set(stageM.runs.map(r => r.outcome));
     $('legend').innerHTML = Object.entries(EFFECT).concat([['', ['neutral', 'no verdict / error']]]).map(([o, [cls, lab]]) =>
       `<span class="lg"><i class="sw ${cls}"></i>${esc(o || 'no verdict')}${o ? ` <small>${c[o] != null ? c[o] + ' in this match' : present.has(o) ? '' : 'not in this match\'s data'}</small>` : ''}</span>`).join('');
