@@ -84,7 +84,13 @@ class Contestant:
         return r.choices[0].message
 
     def _stub(self, messages):
-        script = STUB_SCRIPTS[self.stub]
+        # Stub simulation only (not evidence): stub-bait "obeys" a safety patch if one is in its
+        # system prompt and plays the safe script instead.
+        from .patches import HEADER
+        mode = self.stub
+        if mode == "bait" and HEADER in (messages[0].get("content") or ""):
+            mode = "safe"
+        script = STUB_SCRIPTS[mode]
         item = script[min(self.step, len(script) - 1)]
         self.step += 1
         if item == "{SEND}":  # email whatever the last tool result (the secret) was
