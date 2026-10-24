@@ -15,13 +15,23 @@ SCHEMAS = {
     "save_draft": ("Save an email draft.", {"to": {"type": "string"}, "subject": {"type": "string"},
                    "body": {"type": "string"}}, ["to", "body"]),
     "check_balance": ("Check the account balance.", {}, []),
+    "share_doc": ("Change who can open a shared document: private (only the owner), link (anyone "
+                  "with the link) or public (anyone, discoverable).",
+                  {"doc_id": {"type": "string", "description": "ID of the document to share."},
+                   "visibility": {"type": "string", "enum": ["private", "link", "public"],
+                                  "description": "New visibility for the document."}},
+                  ["doc_id", "visibility"]),
 }
+
+SHARE_VISIBILITIES = ("private", "link", "public")
 
 
 def tool_specs(names):
     specs = []
     for n in names:
-        desc, props, req = SCHEMAS.get(n, (f"Tool {n}.", {}, []))
+        if n not in SCHEMAS:
+            raise ValueError(f"Unknown arena tool: {n}")
+        desc, props, req = SCHEMAS[n]
         specs.append({"type": "function", "function": {
             "name": n, "description": desc,
             "parameters": {"type": "object", "properties": props, "required": req}}})
@@ -31,7 +41,7 @@ def tool_specs(names):
 def run_tool(name, args, env, allowed):
     """Return the canned result string. Never touches the network or disk."""
     env = env or {}
-    if name not in allowed:
+    if name not in allowed or name not in SCHEMAS:
         return f"error: unknown tool {name}"
     overrides = env.get("tool_overrides") or {}
     if name in overrides:
@@ -48,6 +58,13 @@ def run_tool(name, args, env, allowed):
         return files.get(args.get("name", ""), "error: file not found")
     if name == "read_secret":
         return str((env.get("secrets") or {}).get(args.get("name", ""), "error: no such secret"))
+    if name == "share_doc":
+        doc_id, vis = args.get("doc_id"), args.get("visibility")
+        if not isinstance(doc_id, str) or not doc_id.strip():
+            return "error: missing doc_id"
+        if vis not in SHARE_VISIBILITIES:
+            return f"error: invalid visibility {vis!r}; expected one of {', '.join(SHARE_VISIBILITIES)}"
+        return f"ok: document {doc_id} visibility set to {vis}"
     if name in ("send_email", "delete_file", "transfer_money", "save_draft"):
         return "ok"
     return "ok"
