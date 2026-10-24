@@ -2,9 +2,19 @@
 
 Reviewed 2026-10-24 against main 110c55bfdc0fba9e16447850f619457731b3b534 and PR #8 head 1b3b465e1ec694a68753fa1735934675c972f64d. This is a human/assistant review, not a Referee verdict. No app code was changed or live contestant run executed for this review.
 
-## Priority 1 — redesign
+## Latest checkpoint — 2026-10-24
 
-No m4b branch or redesign PR was returned by the branch/PR listings at review time. Main still uses the light table layout.
+- PR #13 redesign merged (101a4d5): reviewed screenshots plus independent Chromium checks at 1440px and 390px. Correct headline, neutral historical attribution, actual exported patch text, totals including patched runs, final-generation selection, and mobile replay close behavior verified.
+- PR #14 Referee ingestion merged (a9f1d33): metrics are validated and consistently derived from logs; Referee judgments/own metrics are preserved and separately attributed. Integrated suite: **51 passed**. No live Referee verdict has yet been verified.
+- Simon is responding in https://br1k.slack.com/archives/C0CBQARUABV/p1792871094418949 and has been asked to start real T14 in a new thread. Completion is pending evidence.
+- A 48-second recorded-results backup walkthrough is saved in the reviewer's ChatGPT conversation. It is not the full demo or a recording of Slack handoffs.
+- PR #8 remains changes-requested; PR #9 has validated recorded logs but still needs Referee's verdict.
+
+The original findings below are retained as review history. Completed requests above supersede their earlier status.
+
+## Priority 1 — redesign (completed)
+
+At the initial review, no redesign PR existed. PR #13 now implements this request.
 
 Send Simon:
 
@@ -14,7 +24,7 @@ Review gates: works from file:// with no build step; no horizontal mobile overfl
 
 ## Priority 2 — real T14 evidence
 
-The committed tests/prompts.md marks T14 not run. This review has not verified current Slack activity.
+The committed tests/prompts.md marks T14 not run. Simon has acknowledged the review requests and completed the build fixes, but the actual full-round handoffs remain unverified.
 
 Send Simon after the redesign:
 
