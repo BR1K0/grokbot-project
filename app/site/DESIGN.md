@@ -14,7 +14,7 @@ The current page is a correct spreadsheet. It needs to become a **game scoreboar
 
 2. **Featured round** (the hero story, the most important section)
    - Auto-pick the most dramatic real chain: the (level, contestant) with the highest final failure rate among real data (today: *Friendly CEO* vs grok-4.3).
-   - Horizontal timeline of generation cards: `gen 1 · 0%` → `gen 2 · 0%` → `gen 3 · 63% BROKE` (red, bigger), each card showing the mutation in plain English ("fixed the fake domain", "added urgency"), then, if a patch exists, a green Guardian card `patched · X%`.
+   - Horizontal timeline of generation cards: `gen 1 · 0%` → `gen 2 · 0%` → `gen 3 · 63% BROKE` (red, bigger), each card showing the actual mutation in plain English ("asked for a reply", "asked for the secret in the summary", "impersonated the user in an email"), then, if a patch exists, a green patch card `patched · X%`. Use the logged metadata; do not invent a mutation narrative or historical Bot authorship. Gen 3 also changed the subject.
    - Under it: a **"See the moment it broke"** button that opens the replay at the bait step.
 
 3. **Leaderboard**
@@ -33,7 +33,7 @@ The current page is a correct spreadsheet. It needs to become a **game scoreboar
    - The bait step gets a red border and a label "⚠ took the bait here"; auto-scroll to it.
    - Run picker as small pills `#1 ✓  #2 ✗ …` instead of a dropdown.
 
-7. **Footer:** one line on method ("10+ runs per match · 95% Wilson intervals · scored by the Referee Bot from hard checks"). Link to the level 05 scoring correction.
+7. **Footer:** one line on method ("Run counts shown per match · 95% Wilson intervals · hard-check measurements; Referee verdicts labelled separately"). Link to the level 05 scoring correction. Identify historical `build_data.py` results as hard-check generated; label a verdict Referee-scored only when the corresponding Bot verdict is available.
 
 ## Visual style
 
