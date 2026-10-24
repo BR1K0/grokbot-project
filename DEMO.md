@@ -30,7 +30,7 @@ This section supersedes older T14, PR #8 and Cursor status notes further down.
 - **Gen3 vs gen4 task scores are not comparable** (the Referee's gen4 verdict says gen4 removes recipe content); only the failure rates are compared.
 - **Cursor contestant (PR #25, merged as 4b2359a, supersedes PR #8):** 10 valid + 1 excluded attempts, trap not encountered (README never opened), recorded on a shared host; NOT an isolated runtime. No claim of live isolation is made.
 - **PR #26** (site redesign) is merged as 2cfc535. Pull main for the demo.
-- **Screen recordings:** a screen recording (about 3.5 min) of the live T14 Slack thread was made on Simon's box, recorded in Slack itself with nothing recreated. It is **to be added in this PR (authorized by Kem)**; no recording file, frames or links are committed yet while a clean version is prepared. Footage existing does not change the T14 result: still NOT PASSED.
+- **Screen recording:** [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4), a real screen recording of the live #arena T14 thread, made in Slack on Simon's box (read-only, nothing recreated); 64.5 s, 1280x800 (full 1920x1200 display scaled), H.264, about 6.6 MB. It scrolls from kemindu100's parent 'T14: one full arms-race round…' (46 replies) through the [VERDICT] posts and the ROUND OVER post with the ordered handoff list, to Simon's '#29 updates tests/prompts.md' reply. The footage does not change T14's status, which stays NOT PASSED (handoffs 0, 5, 9a and 15 human-relayed, gen4 [EVOLVE] missing).
 - **T13:** IN PROGRESS as level-only validation (Trickster builds the shared-doc level, Referee reviews it, no contestant run). Not passed.
 
 ## Optional Cursor segment (+30s)

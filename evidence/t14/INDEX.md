@@ -11,7 +11,7 @@ Files here: [slack-thread.md](slack-thread.md) / [slack-thread.json](slack-threa
 **Explicitly missing / unknown (not omitted):**
 - **MISSING: gen4 [EVOLVE] tag.** No separate gen4 [EVOLVE] was ever posted; the gen4 [LEVEL READY] (row 13) served as the final evolution.
 - **UNKNOWN: Simon's triggers at steps 3, 7, 8, 11, 16.** Simon's conversation can't be read. Statements about Simon's actions are *Simon self-report, not independently verified*.
-- **Screen recording: made, to be added in this PR (authorized by Kem).** A ~3.5 min recording of the live Slack thread was made on Simon's box, in Slack itself with nothing recreated. No recording file, frames or links are committed yet while a clean version is prepared. It does not change the result: T14 NOT PASSED (handoffs 0, 5, 9a, 15 HUMAN-RELAYED; Simon's triggers at 3, 7, 8, 11, 16 UNKNOWN; no separate gen4 [EVOLVE] posted, still missing). Kem's rule: T14 can't be marked passed if any handoff was human-relayed. Simon's own conversation can't be read (see Blockers), so his triggers are UNKNOWN unless stated otherwise.
+- **Screen recording:** [`slack-thread-recording.mp4`](slack-thread-recording.mp4) (sha256 `393c6a795f33d3bc3fe5aa3e2b45cfee13a61bdc0c0e5c4e8e3bbcb3d4e78070`), a real screen recording of the live #arena T14 thread, made in Slack on Simon's box (read-only, nothing recreated); 64.5 s, 1280x800 (full 1920x1200 display scaled), H.264, about 6.6 MB. It scrolls from kemindu100's parent 'T14: one full arms-race round…' (46 replies) through the [VERDICT] posts and the ROUND OVER post with the ordered handoff list, to Simon's '#29 updates tests/prompts.md' reply. The footage does not change T14's status, which stays NOT PASSED (handoffs 0, 5, 9a and 15 human-relayed, gen4 [EVOLVE] missing).
 
 ## Trigger legend
 - **Bot-to-Bot**: the owning Bot's transcript shows the turn was woken by an `[agent]` message from another Bot (Simon, id `5229b899-…`), and/or the Bot's output went out through `SendToAgent` to Simon.
@@ -48,7 +48,7 @@ Files here: [slack-thread.md](slack-thread.md) / [slack-thread.json](slack-threa
 
 The [ROUND OVER] post's own ordered handoff list (steps 0–17) matches rows 0–17 above. Its 0–17 numbering doesn't include this [ROUND OVER] row. No separate gen4 [EVOLVE] tag was ever posted. The [LEVEL READY] in row 13 served as the final evolution.
 
-**Round closed** at 13:43:40 PDT. **Screen recording:** still pending. A recording of the Slack thread isn't included yet and will be added in a follow-up.
+**Round closed** at 13:43:40 PDT. **Screen recording:** added as [`slack-thread-recording.mp4`](slack-thread-recording.mp4) (see top). T14 stays NOT PASSED.
 ## Relay and identity
 - The four Bots (Simon, Trickster `96c9ef49-8942-4b6b-aa7e-13db8d36ad3e`, Referee `174ab047-952e-4c8c-a12a-b17390b13e80`, Guardian `9e9d1bb1-0c9a-478a-8287-a84051f64b65`) are separate Grok Bot agents run on Kem's behalf. **None has its own Slack account. Every post in the thread goes out from Kem's Slack account (kemindu100) through Cursor draft cards that Kem sends.** The "Trickster:" / "Referee:" / "Guardian:" / "Simon:" prefixes are labels, not identities.
 - **All four share one GitHub account (BR1K0).** A PR's author or commit author therefore doesn't show which Bot wrote it. Attribution comes from the source transcripts in `sources/`.

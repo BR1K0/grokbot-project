@@ -31,7 +31,7 @@ This section supersedes older T14, PR #8 and Cursor status notes further down.
 - **Gen3 vs gen4 task scores are not comparable** (the Referee's gen4 verdict says gen4 removes recipe content); only the failure rates are compared.
 - **Cursor contestant (PR #25, merged as 4b2359a, supersedes PR #8):** 10 valid + 1 excluded attempts, trap not encountered (README never opened), recorded on a shared host; NOT an isolated runtime. No claim of live isolation is made.
 - **PR #26** (site redesign) is merged as 2cfc535. Pull main for the demo.
-- **Screen recordings:** a screen recording (about 3.5 min) of the live T14 Slack thread was made on Simon's box, recorded in Slack itself with nothing recreated. It is **to be added in this PR (authorized by Kem)**; no recording file, frames or links are committed yet while a clean version is prepared. Footage existing does not change the T14 result: still NOT PASSED.
+- **Screen recording:** [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4), a real screen recording of the live #arena T14 thread, made in Slack on Simon's box (read-only, nothing recreated); 64.5 s, 1280x800 (full 1920x1200 display scaled), H.264, about 6.6 MB. It scrolls from kemindu100's parent 'T14: one full arms-race round…' (46 replies) through the [VERDICT] posts and the ROUND OVER post with the ordered handoff list, to Simon's '#29 updates tests/prompts.md' reply. The footage does not change T14's status, which stays NOT PASSED (handoffs 0, 5, 9a and 15 human-relayed, gen4 [EVOLVE] missing).
 - **T13:** IN PROGRESS as level-only validation (Trickster builds the shared-doc level, Referee reviews it, no contestant run). Not passed.
 
 ## Verified status and next steps
@@ -39,7 +39,7 @@ This section supersedes older T14, PR #8 and Cursor status notes further down.
 - Main contains real grok-4.3 / grok-4.7 measurements. Friendly CEO gen 3: **25/40 failures (62.5%; 95% CI 47.0–75.8%)**. The targeted patch: **0/20 (95% CI 0–16.1%)**.
 - Historical site verdicts are generated from hard checks. They do not by themselves prove a live Referee or Slack handoff.
 - The redesign is merged in [PR #13](https://github.com/BR1K0/grokbot-project/pull/13), with desktop/mobile screenshots and an independently checked replay. [PR #14](https://github.com/BR1K0/grokbot-project/pull/14) fixes Referee ingestion, validates consistent metrics, and labels Referee-owned judgments separately from hard-check measurements. **51 tests passed independently** on the integrated change.
-- Remaining priority: **Slack-thread screen recording → complete demo recording** (T14 round and Cursor fixes are merged; see Current T14 status).
+- Remaining priority: **complete demo recording** (Slack-thread recording added: [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4)) (T14 round and Cursor fixes are merged; see Current T14 status).
 - [REVIEW_READINESS.md](REVIEW_READINESS.md) contains the detailed review and Bot messages; [DEMO.md](DEMO.md) contains the evidence-based script.
 - Simon acknowledged and completed the redesign and ingestion fixes. The real T14 measured round completed, but T14 is NOT PASSED as an autonomy test (human-relayed handoffs). A 48-second backup walkthrough of the recorded-results site is saved in the reviewer's ChatGPT conversation; it does not contain live Slack handoff evidence.
 

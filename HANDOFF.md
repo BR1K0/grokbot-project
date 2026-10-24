@@ -17,7 +17,7 @@ This section supersedes older T14, PR #8 and Cursor status notes further down.
 - **Gen3 vs gen4 task scores are not comparable** (the Referee's gen4 verdict says gen4 removes recipe content); only the failure rates are compared.
 - **Cursor contestant (PR #25, merged as 4b2359a, supersedes PR #8):** 10 valid + 1 excluded attempts, trap not encountered (README never opened), recorded on a shared host; NOT an isolated runtime. No claim of live isolation is made.
 - **PR #26** (site redesign) is merged as 2cfc535. Pull main for the demo.
-- **Screen recordings:** a screen recording (about 3.5 min) of the live T14 Slack thread was made on Simon's box, recorded in Slack itself with nothing recreated. It is **to be added in this PR (authorized by Kem)**; no recording file, frames or links are committed yet while a clean version is prepared. Footage existing does not change the T14 result: still NOT PASSED.
+- **Screen recording:** [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4), a real screen recording of the live #arena T14 thread, made in Slack on Simon's box (read-only, nothing recreated); 64.5 s, 1280x800 (full 1920x1200 display scaled), H.264, about 6.6 MB. It scrolls from kemindu100's parent 'T14: one full arms-race round…' (46 replies) through the [VERDICT] posts and the ROUND OVER post with the ordered handoff list, to Simon's '#29 updates tests/prompts.md' reply. The footage does not change T14's status, which stays NOT PASSED (handoffs 0, 5, 9a and 15 human-relayed, gen4 [EVOLVE] missing).
 - **T13:** IN PROGRESS as level-only validation (Trickster builds the shared-doc level, Referee reviews it, no contestant run). Not passed.
 
 ## Ownership and access
@@ -55,7 +55,7 @@ Data reference from the reviewed main logs, not numbers to hardcode:
 
 ## Priority 2 — T14 (measured round completed; autonomy NOT PASSED)
 
-Compatibility was resolved by PR #14 (a9f1d33). The real T14 round ran in #arena thread `1792872463.272629` and ended with [ROUND OVER] at 13:43:40 PDT. Its PRs are merged (#16, #19, #20, #22, #24, #27), the evidence index is merged as #28, and tests/prompts.md was updated by #29. As an autonomy test T14 is **NOT PASSED** because handoffs at steps 0, 5, 9a and 15 were human-relayed. See evidence/t14/INDEX.md. The Slack-thread screen recording is still pending.
+Compatibility was resolved by PR #14 (a9f1d33). The real T14 round ran in #arena thread `1792872463.272629` and ended with [ROUND OVER] at 13:43:40 PDT. Its PRs are merged (#16, #19, #20, #22, #24, #27), the evidence index is merged as #28, and tests/prompts.md was updated by #29. As an autonomy test T14 is **NOT PASSED** because handoffs at steps 0, 5, 9a and 15 were human-relayed. See evidence/t14/INDEX.md. The Slack-thread screen recording is added as [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4); it does not change T14's NOT PASSED status.
 
 ## Priority 3 — Cursor
 
@@ -67,10 +67,10 @@ PR #9 (level-01 gen-2 data) is merged as d5f9100.
 
 Follow DEMO.md. A 48-second, silent backup walkthrough of the reviewed #13 recorded-results site is saved for Joel in the ChatGPT review conversation (Simon-Says-Arena-Backup.mp4). It shows six actual UI views, including the real leaking run and patch comparison; it is not a live T14 recording. Playback was decoded and checked. The video has not been shared to Slack.
 
-Still record the real T14 Slack thread (**pending, not yet added**). Any Cursor segment shows the historical result only, with its caveats. Keep the complete-demo backup marked pending until that recording exists.
+The real T14 Slack thread recording is added: [`evidence/t14/slack-thread-recording.mp4`](evidence/t14/slack-thread-recording.mp4) (64.5 s, live thread recorded in Slack, nothing recreated; T14 stays NOT PASSED). Any Cursor segment shows the historical result only, with its caveats. The complete-demo backup is still marked pending.
 
 ## Next reviewer action
 
-Review and merge this docs follow-up. Then add the Slack-thread screen recording, pull main for the demo (#26 site redesign is merged as 2cfc535; keep the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 is IN PROGRESS (level-only; Trickster's [LEVEL READY] and the Referee review are pending) and T15 is NOT RUN.
+Review and merge this docs follow-up. Then pull main for the demo (#26 site redesign is merged as 2cfc535; keep the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 is IN PROGRESS (level-only; Trickster's [LEVEL READY] and the Referee review are pending) and T15 is NOT RUN.
 
 Detailed findings and copy-ready Bot instructions: REVIEW_READINESS.md.
