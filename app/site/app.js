@@ -177,7 +177,7 @@ typeof window !== 'undefined' && (function () {
     Rounded percentages always come with their counts. “Unbroken” means not broken in these tests, not proven safe. <a href="#corrections">Level 05 scoring correction</a>.`;
 
   // ---------- replay modal ----------
-  let lastFocus = null;
+  let lastFocus = null, curReplay = null;
   function openReplay(id, runNo) {
     const v = D.verdicts.find(x => x.id === id), m = D.matches.find(x => x.id === id);
     if (!v || !m) return;
@@ -186,7 +186,8 @@ typeof window !== 'undefined' && (function () {
     if (ri < 0) ri = 0;
     lastFocus = lastFocus || document.activeElement;
     $('replay').hidden = false; document.body.style.overflow = 'hidden';
-    renderRun(v, m, ri);
+    renderRun(v, m, ri); curReplay = v;
+    document.querySelector('main').inert = true;
     $('close').focus({preventScroll: true});
     history.replaceState(null, '', `#replay=${encodeURIComponent(id)}&run=${m.runs[ri].run}`);
   }
@@ -200,7 +201,7 @@ typeof window !== 'undefined' && (function () {
       ${ArenaLogic.refereeJudgement(v).map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')}
       ${a ? `<div class="audit" style="margin-top:8px">Re-scored ${esc(a.rescored_at)}: ${esc(a.rescored_reason)}${run.original_canary_leaked ? ' This run originally counted as leaking ' + esc(run.original_canary_leaked.join(', ')) + '.' : ''}</div>` : ''}`;
     $('pills').innerHTML = m.runs.map((r, k) => `<button class="pill ${r.failed ? 'fail' : ''} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}">#${r.run} ${r.failed ? '✗' : '✓'}</button>`).join('');
-    $('pills').onclick = e => { const b = e.target.closest('.pill'); if (b) { renderRun(v, m, +b.dataset.k); history.replaceState(null, '', `#replay=${encodeURIComponent(v.id)}&run=${m.runs[+b.dataset.k].run}`); } };
+    $('pills').onclick = e => { const b = e.target.closest('.pill'); if (b) { renderRun(v, m, +b.dataset.k); const nb = $('pills').querySelector(`.pill[data-k="${b.dataset.k}"]`); if (nb) nb.focus({preventScroll: true}); history.replaceState(null, '', `#replay=${encodeURIComponent(v.id)}&run=${m.runs[+b.dataset.k].run}`); } };
     $('replay-body').innerHTML = (run.transcript || []).map((s, k) => {
       const bait = k === run.moment_index;
       const chips = (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>');
@@ -211,13 +212,23 @@ typeof window !== 'undefined' && (function () {
     if (b) requestAnimationFrame(() => body.scrollTo({top: b.offsetTop - (body.clientHeight - b.offsetHeight) / 2, behavior: reduced ? 'auto' : 'smooth'})); else body.scrollTop = 0;
   }
   function closeReplay() {
-    $('replay').hidden = true; document.body.style.overflow = '';
+    $('replay').hidden = true; document.body.style.overflow = ''; document.querySelector('main').inert = false; curReplay = null;
     history.replaceState(null, '', location.pathname);
     if (lastFocus) lastFocus.focus(); lastFocus = null;
   }
   $('close').onclick = closeReplay;
   $('replay').addEventListener('click', e => { if (e.target.id === 'replay') closeReplay(); });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('replay').hidden) closeReplay(); });
+  document.addEventListener('keydown', e => {
+    if ($('replay').hidden) return;
+    if (e.key === 'Escape') return closeReplay();
+    if (e.key !== 'Tab') return;
+    const f = [...$('replay').querySelectorAll('button,[href],select,summary,[tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
+    if (!f.length) return;
+    const first = f[0], last = f[f.length - 1];
+    if (!$('replay').contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
 
 
   // ---------- replay stage (centerpiece): one boundary ring that holds or fractures per recorded outcome ----------
@@ -237,7 +248,7 @@ typeof window !== 'undefined' && (function () {
   const ring = $('ring');
   const setRing = (state, label) => { ring.setAttribute('class', 'ring ' + state); $('ring-label').textContent = label; };
   const steps = () => (st.m.runs[st.ri].transcript || []);
-  function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
+  function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
   function show(k) {
     const run = st.m.runs[st.ri], t = steps();
     st.k = Math.max(-1, Math.min(k, t.length - 1));
@@ -253,10 +264,12 @@ typeof window !== 'undefined' && (function () {
   }
   function play() {
     if (st.timer) return stop();
-    if (st.k >= steps().length - 1) show(-1);
-    $('play').textContent = '❚❚ Pause';
+    const n = steps().length;
+    if (!n) { show(-1); $('play').textContent = '▶ Play the replay'; return; }   // nothing recorded to play
+    if (st.k >= n - 1) show(-1);
     const tick = () => { show(st.k + 1); if (st.k >= steps().length - 1) stop(); };
-    tick(); st.timer = setInterval(tick, reduced ? 2200 : 1400);
+    tick();
+    if (st.k < n - 1) { $('play').textContent = '❚❚ Pause'; st.timer = setInterval(tick, reduced ? 2200 : 1400); }
   }
   function evidence(v, run) {
     const t = run.transcript || [];
@@ -269,7 +282,7 @@ typeof window !== 'undefined' && (function () {
     const pre = s => s ? `<pre>${esc((s.content || '').trim())}</pre>` : '<p class="muted">not recorded in this run</p>';
     $('evidence').innerHTML = `<h3>Evidence · run #${run.run} <small class="muted">recorded outcome (hard checks): ${esc(run.outcome || 'no verdict')}</small></h3>`
       + d('The task', pre(task))
-      + d('The manipulation attempt <small class="muted">(first tool result the bot read; the level\'s trap lives here)</small>', pre(tool))
+      + d('First tool result <small class="muted">(recorded; where the manipulation sits is not marked in the data)</small>', pre(tool))
       + d("The bot's response", pre(fin))
       + d(`Tool calls (${calls.length})`, calls.map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>') || '<p class="muted">none</p>')
       + d(`Referee's explanation`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
@@ -283,7 +296,8 @@ typeof window !== 'undefined' && (function () {
   function loadMatch(v) {
     const stageV = v, stageM = D.matches.find(x => x.id === v.id);
     st.v = stageV; st.m = stageM;
-    $('stage-title').innerHTML = `${rtag(stageV)}${esc(name(stageV.level))} vs ${esc(stageV.contestant)} ${testTag(stageV)}`;
+    $('stage-title').innerHTML = `${stageV.round ? rtag(stageV) : '<span class="tag">historical</span> '}${esc(name(stageV.level))} vs ${esc(stageV.contestant)}`
+      + ` <span class="tag ${stageV.patch ? 'safe' : ''}">${stageV.patch ? 'patched · ' + esc(stageV.patch) : 'unpatched'}</span> ${testTag(stageV)}`;
     const c = stageV.outcome_counts || {};
     $('stage-stats').innerHTML = `gen ${stageV.generation} · ${fails(stageV)}/${stageV.runs} runs failed (${pct(stageV.failure_rate)}, 95% CI ${p1(stageV.ci_low)}–${p1(stageV.ci_high)}%)`
       + (stageV.leaks != null && stageV.leak_ci_low != null ? ` · ${stageV.leaks}/${stageV.runs} leaked (${pct(stageV.leak_rate)}, 95% CI ${p1(stageV.leak_ci_low)}–${p1(stageV.leak_ci_high)}%)` : '')
@@ -298,13 +312,21 @@ typeof window !== 'undefined' && (function () {
   if (stageV && stageM && stageM.runs.length) {
     const opts = () => D.verdicts.filter(v => (showTest || real(v)) && D.matches.some(m => m.id === v.id && m.runs.length));
     const fill = () => { $('stage-match').innerHTML = opts().map(v => `<option value="${esc(v.id)}" ${v.id === st.v.id ? 'selected' : ''}>${esc((v.round ? 'round ' + v.round + ' · ' : 'historical · ') + name(v.level) + ' · ' + v.contestant + (v.patch ? ' + ' + v.patch : '') + (v.stub ? ' (stub)' : v.sample ? ' (sample)' : ''))}</option>`).join(''); };
-    loadMatch(stageV); fill(); stageFill = fill;
+    loadMatch(stageV); fill();
+    stageFill = () => {
+      if (!showTest && st.v && !real(st.v)) {
+        stop();
+        const next = (real(stageV) && stageV) || opts()[0];
+        if (next) { $('stage').hidden = false; loadMatch(next); } else { $('stage').hidden = true; }
+      }
+      fill();
+    };
     $('stage-match').onchange = e => loadMatch(D.verdicts.find(v => v.id === e.target.value));
     $('play').onclick = play;
     $('c-restart').onclick = () => { stop(); show(-1); };
     $('c-step').onclick = () => { stop(); show(st.k + 1); };
     $('c-back').onclick = () => { stop(); show(st.k - 1); };
-    $('stage-runs').onclick = e => { const b = e.target.closest('.pill'); if (b) loadRun(+b.dataset.k); };
+    $('stage-runs').onclick = e => { const b = e.target.closest('.pill'); if (b) { loadRun(+b.dataset.k); const nb = $('stage-runs').querySelector(`.pill[data-k="${b.dataset.k}"]`); if (nb) nb.focus({preventScroll: true}); } };
   } else $('stage').hidden = true;
 
   // ---------- theme toggle (follows prefers-color-scheme until the visitor picks) ----------
@@ -315,7 +337,8 @@ typeof window !== 'undefined' && (function () {
     try { localStorage.setItem('arena-theme', next); } catch (e) {}
   };
 
-  $('testdata').onchange = e => { showTest = e.target.checked; renderBoard(); renderLevels(); renderPatches(); stageFill(); };
+  $('testdata').onchange = e => { showTest = e.target.checked; renderBoard(); renderLevels(); renderPatches(); stageFill();
+    if (!showTest && !$('replay').hidden && curReplay && !real(curReplay)) closeReplay(); };
   renderBoard(); renderLevels(); renderPatches();
   const h = location.hash.match(/^#replay=([^&]+)(?:&run=(\d+))?/);
   if (h) openReplay(decodeURIComponent(h[1]), h[2] ? +h[2] : null);
