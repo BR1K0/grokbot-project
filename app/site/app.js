@@ -305,19 +305,21 @@ typeof window !== 'undefined' && (function () {
   const setRing = (state, label) => { ring.setAttribute('class', 'ring ' + state); $('ring-label').textContent = label; };
   const curRun = () => (st.m && st.m.runs && st.m.runs[st.ri]) || null;
   const steps = () => ((curRun() || {}).transcript || []);
-  function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
+  function stop() { clearInterval(st.timer); st.timer = null; syncPlay(); }
+  // one button state for both replays: Pause while either runs
+  function syncPlay() { const p = $('play'); if (!p) return; p.textContent = (st.timer || (() => { try { return ck.timer; } catch (e) { return null; } })()) ? '❚❚ Pause' : (steps().length && st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'); }
   function show(k) {
     const run = curRun(), t = steps();
     if (!run) { setRing('neutral', 'no recorded run'); $('stage-step').innerHTML = ''; return; }
     st.k = Math.max(-1, Math.min(k, t.length - 1));
     $('c-pos').textContent = `step ${st.k + 1} of ${t.length}`;
-    const reached = run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1;
+    const reached = (run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1) || $('stage').classList.contains('ring-on');
     const [cls, lab0] = effect(run.outcome);
     const readSecret = ArenaLogic.readSecret(run);
     const lab = (run.outcome === 'TOUCHED_SECRET' && readSecret ? 'Bot read the secret (TOUCHED_SECRET, hard checks): secret accessed' : lab0) + (run.outcome === 'TOOK_THE_BAIT' || run.outcome === 'TOUCHED_SECRET' ? (run.canary_leaked && run.canary_leaked.length ? ` · canary leaked: ${run.canary_leaked.join(', ')}` : '; no recorded canary leak') : '');
     const hc = 'This run · per-run hard check: ';
     if (run.excluded) setRing('neutral', `Run #${run.run} EXCLUDED: ${run.exclusion_reason || 'not scored'}`);
-    else if (st.k < 0) setRing('idle', `Replay of run #${run.run}: press play`);
+    else if (st.k < 0 && !reached) setRing('idle', `Replay of run #${run.run}: press play`);
     else if (reached) setRing(cls, hc + lab); else setRing('pending', 'replaying…');
     leakCard(run, reached);
     const s = t[st.k];
@@ -344,7 +346,7 @@ typeof window !== 'undefined' && (function () {
     if (st.k >= n - 1) show(-1);
     const tick = () => { show(st.k + 1); if (st.k >= steps().length - 1) stop(); };
     tick();
-    if (st.k < n - 1) { $('play').textContent = '❚❚ Pause'; st.timer = setInterval(tick, reduced ? 2200 : 1400); }
+    if (st.k < n - 1) { st.timer = setInterval(tick, reduced ? 2200 : 1400); } syncPlay();
   }
   function evidence(v, run) {
     const t = run.transcript || [];
@@ -367,10 +369,77 @@ typeof window !== 'undefined' && (function () {
       + d(`Referee's explanation <small class="muted">(match-level task judgment across all runs, not this run's hard check)</small>`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
         : `<p class="muted">No Referee verdict for this group: scored by <code>build_data.py</code> hard checks only.</p>`);
   }
+
+  // ---------- cast: the four Grok Bots + the contestant appear as the recorded run is replayed ----------
+  // Every caption is a label of a recorded event in data.js (no invented dialogue).
+  const FACE = {
+    simon: '<path d="M16 14l4-6 4 5 4-5 4 6z" class="acc"/>',
+    trickster: '<path d="M15 16l-3-8 7 5M33 16l3-8-7 5" class="acc"/><path d="M19 32l3-2 2 2 2-2 3 2" class="ln"/>',
+    guardian: '<path d="M24 34l-7-3v-5l7-2 7 2v5z" class="acc"/>',
+    referee: '<path d="M14 18h20M14 22h20" class="ln"/><circle cx="34" cy="34" r="3" class="acc"/>',
+    player: '<path d="M24 14V7" class="ln"/><circle cx="24" cy="6" r="2.5" class="acc"/>',
+  };
+  const svgBot = (k) => `<svg viewBox="0 0 48 48" aria-hidden="true" class="bot-svg"><rect x="10" y="14" width="28" height="24" rx="8" class="body"/>${FACE[k]}<circle cx="19" cy="25" r="2.6" class="eye"/><circle cx="29" cy="25" r="2.6" class="eye"/>${k === 'trickster' ? '' : '<path d="M20 31h8" class="ln"/>'}</svg>`;
+  const clip = (x, n) => { x = String(x == null ? '' : x).replace(/\s+/g, ' ').trim(); return x.length > n ? x.slice(0, n) + '…' : x; };
+  const ck = {list: [], k: -1, timer: null, guard: false};
+  function castBuild(v, m, run) {
+    const t = run.transcript || [], L = [];
+    const outcome = run.excluded ? `EXCLUDED: ${run.exclusion_reason || 'not scored'}` : (ArenaLogic.humanLabel(run.outcome, run) ? `${ArenaLogic.humanLabel(run.outcome, run)} (${run.outcome})` : (run.outcome || 'no verdict recorded'));
+    L.push({who: 'simon', say: `starting match: ${name(v.level)}, ${m.runs.length} recorded runs`});
+    if (v.patch) L.push({who: 'guardian', say: `patch applied: ${v.patch}`});
+    let trap = false, lastResp = null;
+    t.forEach(s => {
+      if (s.role === 'tool' && !trap) { trap = true; L.push({who: 'trickster', say: `trap: ${name(v.level)}`, sub: 'first tool result recorded'}); }
+      if (s.role === 'assistant') (s.tool_calls || []).forEach(tc => L.push({who: 'player', say: `${tc.name}(${clip(tc.arguments, 110)})`, sub: 'recorded tool call', code: true}));
+      if (s.role === 'assistant' && s.content && s.content.trim()) lastResp = s;
+    });
+    if (lastResp) L.push({who: 'player', say: clip(lastResp.content, 160), sub: 'recorded response'});
+    L.push({who: 'referee', say: `verdict: ${outcome}`, sub: 'per-run hard check' + (v.verdict_by === 'Referee' && ArenaLogic.refereeJudgement(v).length ? ' · match-level Referee verdict in evidence below' : '')});
+    return L;
+  }
+  function castLoad(v, m, run) {
+    castStop(); ck.list = castBuild(v, m, run); ck.k = -1; ck.guard = !!v.patch;
+    const C = [['simon', 'Simon', 'game master'], ['trickster', 'Trickster', 'designed the trap'], ['guardian', 'Guardian', ck.guard ? 'wrote the patch' : 'not in this match'], ['referee', 'Referee', 'scores the run'], ['player', v.contestant, 'contestant']];
+    $('cast-row').innerHTML = C.map(([k, n, r]) => `<li class="bot b-${k}${k === 'guardian' && !ck.guard ? ' absent' : ''}" data-who="${k}">${svgBot(k)}<b>${esc(n)}</b><small>${esc(r)}</small></li>`).join('');
+    $('cast-run').textContent = `Replay of recorded run #${run.run}`;
+    castShow(-1);
+  }
+  function castShow(k) {
+    ck.k = Math.max(-1, Math.min(k, ck.list.length - 1)); ringVis();
+    const e = ck.list[ck.k];
+    $('k-pos').textContent = `event ${ck.k + 1} of ${ck.list.length}`;
+    $('k-prev').disabled = ck.k < 0; $('k-next').disabled = ck.k >= ck.list.length - 1;
+    document.querySelectorAll('#cast-row .bot').forEach(b => b.classList.toggle('active', !!e && b.dataset.who === e.who));
+    const say = $('cast-say');
+    if (!e) { say.className = 'cast-say idle'; say.innerHTML = 'Press Play to watch the bots step through this recorded run.'; say.style.removeProperty('--x'); return; }
+    say.className = `cast-say on s-${e.who}`;
+    say.innerHTML = `<span class="who">${esc(e.who === 'player' ? $('cast-row').querySelector('.b-player b').textContent : e.who[0].toUpperCase() + e.who.slice(1))}${e.sub ? ' · ' + esc(e.sub) : ''}</span>${e.code ? `<code>${esc(e.say)}</code>` : esc(e.say)}`;
+    const a = $('cast-row').querySelector(`.b-${e.who}`), r0 = $('cast').getBoundingClientRect(), r1 = a.getBoundingClientRect();
+    say.style.setProperty('--x', Math.round(r1.left + r1.width / 2 - r0.left - 16) + 'px');
+  }
+  function castStop() { clearInterval(ck.timer); ck.timer = null; $('k-play').textContent = ck.k >= ck.list.length - 1 && ck.list.length ? '↻ Again' : '▶ Play'; syncPlay(); }
+  // the big circle is revealed only at the cast's final (outcome) step
+  function ringVis() { const on = ck.list.length > 0 && ck.k >= ck.list.length - 1, was = $('stage').classList.contains('ring-on'); $('stage').classList.toggle('ring-on', on); if (on !== was && curRun()) show(st.k); }
+  // main Play and cast Play drive both replays together
+  function playBoth() { const on = st.timer || ck.timer; if (on) { if (st.timer) stop(); if (ck.timer) castStop(); return; } play(); castPlay(); syncPlay(); }
+  function castPlay() {
+    if (ck.timer) return castStop();
+    if (ck.k >= ck.list.length - 1) castShow(-1);
+    const tick = () => { castShow(ck.k + 1); if (ck.k >= ck.list.length - 1) castStop(); };
+    tick(); if (ck.k < ck.list.length - 1) { $('k-play').textContent = '❚❚ Pause'; ck.timer = setInterval(tick, reduced ? 2400 : 1600); } syncPlay();
+  }
+  $('k-play').onclick = playBoth;
+  $('k-next').onclick = () => { castStop(); castShow(ck.k + 1); };
+  $('k-prev').onclick = () => { castStop(); castShow(ck.k - 1); };
+  document.addEventListener('keydown', e => {
+    if (!$('replay').hidden || $('stage').hidden || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (e.target.closest && e.target.closest('input,textarea,select,[role=listbox]')) return;
+    e.preventDefault(); castStop(); castShow(ck.k + (e.key === 'ArrowRight' ? 1 : -1));
+  });
   function loadRun(ri) {
     stop(); st.ri = ri; st.k = -1; st.pulsed = false; ring.classList.remove('pulse'); const run = curRun(); if (!run) { show(-1); return; }
     $('stage-runs').innerHTML = st.m.runs.map((r, k) => (r.excluded ? `<button class="pill excluded ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(ArenaLogic.pillState(r).title)}">#${r.run} EXCLUDED</button>` : `<button class="pill o-${effect(r.outcome)[0]} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(r.outcome || 'no verdict')}">#${r.run} ${olab(r.outcome, r)}</button>`)).join('');
-    evidence(st.v, run); show(-1); stop();
+    evidence(st.v, run); castLoad(st.v, st.m, run); show(-1); stop();
   }
   // plain-English story for the selected match, generated from its recorded task + data.js counts (no hardcoded numbers)
   function story(v, m) {
@@ -391,7 +460,7 @@ typeof window !== 'undefined' && (function () {
       + row('Result', res, 'sc-res')
       + '</dl>';
     if (nf === 0) s += `<p class="sc-note" role="note">No failures here is not proof of safety: the upper bound is ${p1(v.ci_high)}%.</p>`;
-    $('story').innerHTML = s + '<p class="sc-foot">Watch a recorded run below ↓</p>';
+    $('story').innerHTML = s + '<p class="sc-foot">Recorded run shown above ↑</p>';
   }
   function loadMatch(v) {
     stop();
@@ -455,7 +524,7 @@ typeof window !== 'undefined' && (function () {
       }
       fill();
     };
-    $('play').onclick = play;
+    $('play').onclick = playBoth;
     $('c-restart').onclick = () => { stop(); show(-1); };
     $('c-step').onclick = () => { stop(); show(st.k + 1); };
     $('c-back').onclick = () => { stop(); show(st.k - 1); };
