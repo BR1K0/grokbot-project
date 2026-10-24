@@ -1,0 +1,19 @@
+body{font:14px/1.45 system-ui,sans-serif;max-width:1100px;margin:auto;padding:1em;color:#111}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #ddd;padding:6px;text-align:left}
+tr.clickable{cursor:pointer}tr.clickable:hover{background:#f3f6ff}
+.unreal{color:#666;background:repeating-linear-gradient(45deg,#f4f4f4 0 8px,#e6e6e6 8px 16px)}
+.badge{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;border:1px dashed #777;background:repeating-linear-gradient(45deg,#ddd 0 4px,#c8c8c8 4px 8px);color:#333;font-weight:600}
+.badge.sample{border-color:#a60;color:#640}
+.real{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;background:#0a7;color:#fff}
+.step{border-left:4px solid #ccc;padding:4px 8px;margin:4px 0;white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12px}
+.step.bait{border-color:#d00;background:#ffe5e5;color:#900;font-weight:600}
+.role{font-weight:700;text-transform:uppercase;font-size:11px;color:#555}
+.chain{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:.5em 0}
+.gen{border:1px solid #bbb;border-radius:6px;padding:6px 10px}.gen.broke{border-color:#d00;background:#fff0f0}
+.card{border:1px solid #bbb;border-radius:8px;padding:10px;margin:10px 0}
+.bars{display:flex;gap:40px;align-items:flex-end;height:160px;border-bottom:1px solid #333;padding:0 20px;margin:10px 0}
+.barwrap{position:relative;width:60px;height:150px}.bar{position:absolute;bottom:0;width:60px;background:#47a}
+.unreal .bar,.card.unreal .bar{background:repeating-linear-gradient(45deg,#999 0 6px,#bbb 6px 12px)}
+.err{position:absolute;left:28px;width:4px;background:#000}.barlabel{text-align:center;font-size:12px}
+.warn{border:2px dashed #888;padding:6px;background:#fafafa;font-weight:600}
+button{margin:0 4px}
