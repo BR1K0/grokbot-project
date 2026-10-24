@@ -1,5 +1,7 @@
 # Simon Says Arena
 
+## ▶️ [Try it live: br1k0.github.io/grokbot-project](https://br1k0.github.io/grokbot-project/app/site/)
+
 > **Four Grok Bots test whether AI agents follow their user’s rules, evolve traps, and measure proposed fixes.**
 
 Every AI agent is told *"only do what your user asks."* Simon Says Arena tests whether they actually do. **Simon** is the game master; the four-Bot workflow assigns each stage to its owner:
