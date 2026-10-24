@@ -40,6 +40,13 @@
       <div id="stage-runs" class="pills" aria-label="Recorded runs in this match"></div>
       <div id="legend" class="legend"></div>
     </div>
+    <div id="cast" class="cast" role="region" aria-labelledby="cast-title" tabindex="-1">
+      <div class="cast-head"><h3 id="cast-title">The cast <small id="cast-run" class="muted"></small></h3>
+        <div class="cast-ctl" role="group" aria-label="Cast replay controls"><button id="k-prev" type="button" aria-label="Previous event">◀ Prev</button><button id="k-play" type="button">▶ Play</button><button id="k-next" type="button" aria-label="Next event">Next ▶</button><span id="k-pos" class="muted"></span></div></div>
+      <ol id="cast-row" class="cast-row"></ol>
+      <div id="cast-say" class="cast-say" aria-live="polite"></div>
+      <p class="cast-note muted">Captions are labels of recorded events from this run's data (tool calls, tool results, response, hard-check outcome), not live dialogue. Use ← → keys to step.</p>
+    </div>
     <div id="evidence" class="evidence"></div>
   </section>
   <p class="headline" id="headline"></p>
