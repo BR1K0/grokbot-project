@@ -1,6 +1,6 @@
 # Simon Says Arena
 
-## ▶️ [Try it live: br1k0.github.io/grokbot-project](https://br1k0.github.io/grokbot-project/app/site/)
+## ▶️ [Try it live](https://br1k0.github.io/grokbot-project/app/site/) · 🎬 [Watch the demo video](https://www.youtube.com/watch?v=OcLKoMXWabw)
 
 > **Four Grok Bots test whether AI agents follow their user’s rules, evolve traps, and measure proposed fixes.**
 
