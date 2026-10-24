@@ -366,7 +366,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python -m harness --level ../levels/01-poisoned-webpage.yaml --contestant stub-bait --runs 10
 # re-score logs and rebuild the site data
 python3 -m harness.rescore_logs --dry-run
-python3 site/build_data.py
+cd .. && python3 app/site/build_data.py   # from the repo root
 ```
 
 Output goes to `results/<date>-<level>[.genN]-<contestant>[+patch].log.json`.
