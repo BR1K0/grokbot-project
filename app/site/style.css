@@ -19,3 +19,5 @@ tr.clickable{cursor:pointer}tr.clickable:hover{background:#f3f6ff}
 .err{position:absolute;left:28px;width:4px;background:#000}.barlabel{text-align:center;font-size:12px}
 .warn{border:2px dashed #888;padding:6px;background:#fafafa;font-weight:600}
 button{margin:0 4px}
+.inconclusive{background:#fff3c4;color:#5a4500;padding:1px 6px;border-radius:4px;font-weight:600}
+.compromised{background:#ffe5e5;color:#900;padding:1px 6px;border-radius:4px;font-weight:600}
