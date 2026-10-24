@@ -7,7 +7,7 @@ const ArenaLogic = (function () {
   // featured chain: unpatched real (base_level, contestant) chain with the highest FINAL-generation failure rate
   const pickChain = verdicts => {
     const chains = {};
-    verdicts.filter(v => real(v) && !v.patched).forEach(v => (chains[v.base_level + '|' + v.contestant] ||= []).push(v));
+    verdicts.filter(v => real(v) && !v.patched).forEach(v => (chains[(v.round || '') + '|' + v.base_level + '|' + v.contestant] ||= []).push(v));
     const list = Object.values(chains).map(c => c.slice().sort((a, b) => a.generation - b.generation));
     const last = c => c[c.length - 1];
     return list.sort((a, b) => last(b).failure_rate - last(a).failure_rate)[0] || null;
@@ -74,7 +74,7 @@ typeof window !== 'undefined' && (function () {
   if (best) {
     const broke = best.find(v => v.failure_rate >= 0.3);
     const peak = best.reduce((a, v) => v.failure_rate > a.failure_rate ? v : a);
-    const patch = realV.find(v => v.patched && v.level === peak.level && v.contestant === peak.contestant);
+    const patch = realV.find(v => v.patched && v.level === peak.level && v.contestant === peak.contestant && (v.round || '') === (peak.round || ''));
     const cards = best.map(v => `<div class="gen ${v === broke ? 'broke' : ''}"><small>gen ${v.generation}</small>
       <div class="num">${pct(v.failure_rate)}${v === broke ? ' <span class="tag bait">broke</span>' : ''}</div>
       <small>${detail(v)}</small><p>${mutation(v)}</p></div>`);
@@ -119,7 +119,7 @@ typeof window !== 'undefined' && (function () {
         <h3>${esc(meta.name || base)}</h3><p class="teaser">${esc(meta.teaser || '')}</p>
         ${gen1.map(v => `<div class="mini"><span>${esc(v.contestant)}</span>${bar(v)}<span>${fails(v)}/${v.runs}</span></div>`).join('')}
         <details><summary>${vs.length} matches${vs.some(v => v.generation > 1) ? ' incl. evolved generations' : ''} · click to replay</summary><div class="matches">
-        ${vs.map(v => `<div class="match" data-id="${esc(v.id)}"><span>gen ${v.generation} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}</span>
+        ${vs.map(v => `<div class="match" data-id="${esc(v.id)}"><span>gen ${v.generation} · ${v.round ? `<span class="tag">round ${esc(v.round)}</span> ` : ''}${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}</span>
           <span>${pct(v.failure_rate)} <small>(${detail(v)})</small> ${vsTag(v)}</span></div>`).join('')}</div></details></div>`;
     }).join('');
   }
@@ -128,7 +128,7 @@ typeof window !== 'undefined' && (function () {
   // ---------- patches ----------
   function renderPatches() {
     $('patch-cards').innerHTML = D.verdicts.filter(v => v.patched && (showTest || real(v))).map(a => {
-      const b = D.verdicts.find(v => !v.patched && v.level === a.level && v.contestant === a.contestant);
+      const b = D.verdicts.find(v => !v.patched && v.level === a.level && v.contestant === a.contestant && (v.round || '') === (a.round || ''));
       const fake = !real(a) || (b && !real(b));
       const row = (v, l, c) => `<div class="pbar"><b>${l}</b>${bar(v, c)}<span class="lab">${pct(v.failure_rate)} <small>(${detail(v)})</small></span></div>`;
       return `<div class="pcard"><b>${esc(a.patch)}</b> on ${esc(name(a.level))} · ${esc(a.contestant)} ${testTag(a)}
