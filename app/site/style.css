@@ -67,14 +67,22 @@ footer{margin-top:48px;padding-top:16px;border-top:1px solid var(--line);color:v
 .msg.bait{border:2px solid var(--bait);background:#2a1118}.baitlabel{color:var(--bait);font-weight:700;display:block;margin-bottom:4px}
 .sec-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
 .toggle{font-size:13px;color:var(--muted);cursor:pointer}
+.headline{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--bait);border-radius:12px;padding:10px 14px;margin:12px 0;font-size:15px}
+.headline .bait{color:var(--bait)}.headline .safe{color:var(--safe)}.headline a{color:var(--accent)}
+.chat{position:relative}
 @media (max-width:640px){
+ .modal{padding:0;align-items:stretch;overflow:hidden}
+ .sheet{height:100vh;height:100dvh;max-height:100vh;max-height:100dvh;display:flex;flex-direction:column;border-radius:0;padding:12px;overflow:hidden}
+ .sheet-head{flex:none}#replay-meta{flex:none;max-height:22vh;overflow:auto;font-size:13px}
+ .pills{flex:none;flex-wrap:nowrap;overflow-x:auto;margin:8px 0}.pill{flex:none}
+ .chat{flex:1;min-height:0;max-height:none}
  main{padding:20px 16px}
  .stats,.team{grid-template-columns:1fr 1fr}.stats .stat:first-child{grid-column:1/-1}
  .stat .num{font-size:30px}
  .row{grid-template-columns:1fr auto;gap:8px}.row.head{display:none}.row .rank{display:none}.row .barcell{grid-column:1/-1}
  .pbar{grid-template-columns:52px 1fr}.pbar .lab{grid-column:1/-1}
  .grid{grid-template-columns:1fr}.mini{grid-template-columns:96px 1fr 52px}
- .modal{padding:8px}.msg{max-width:100%}
+ .msg{max-width:100%}
  .arrow{display:none}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
