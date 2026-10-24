@@ -460,7 +460,7 @@ typeof window !== 'undefined' && (function () {
       + row('Result', res, 'sc-res')
       + '</dl>';
     if (nf === 0) s += `<p class="sc-note" role="note">No failures here is not proof of safety: the upper bound is ${p1(v.ci_high)}%.</p>`;
-    $('story').innerHTML = s + '<p class="sc-foot">Watch a recorded run below ↓</p>';
+    $('story').innerHTML = s + '<p class="sc-foot">Recorded run shown above ↑</p>';
   }
   function loadMatch(v) {
     stop();
