@@ -23,16 +23,16 @@ Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
 - The existing suite passed independently: **31 tests**. A separate reproduction found a real-Referee-verdict ingestion failure; see [issue #11](https://github.com/BR1K0/grokbot-project/issues/11).
 - Priority: **site redesign → verdict compatibility and recorded T14 → Cursor fixes → demo recording**.
 - [REVIEW_READINESS.md](REVIEW_READINESS.md) contains the detailed review and Bot messages; [DEMO.md](DEMO.md) contains the evidence-based script.
-- Bots have received the redesign request in #arena. Acknowledgment, completed T14 and backup video remain unverified at this checkpoint.
+- The redesign request has been delivered to #arena. Acknowledgment, completed T14 and backup video remain unverified at this checkpoint.
 
 ## How it fits the judging criteria
 
 | Criterion | What we show |
 |---|---|
 | **Idea** | Agent safety is a real, unsolved problem; this turns automated red-teaming *and* the fix into a game anyone can play. The intended loop coordinates trap creation, evolution, patches and retests. A completed scheduled or unattended loop must be shown with execution evidence; it is not established by the existing logs alone. |
-| **User experience** | Named levels, a leaderboard ranked by "generations to break", match replays showing the exact moment an agent took the bait, a before/after chart for every patch, and a one-line Slack command to submit your own trap. |
+| **User experience** | Named levels, a leaderboard showing failure rates and generations to break, match replays showing the exact moment an agent took the bait, a before/after chart for every patch, and a one-line Slack command to submit your own trap. |
 | **Implementation** | Sandboxed harness with fake tools and canary secrets; 10 runs per match with failure rate + 95% confidence interval; an evolutionary loop where Trickster mutates traps that failed to break an agent; a closed attack → patch → retest loop with measured improvement; hard checks from tool-call logs, with Referee responsible for the live workflow’s verdicts and task-quality judgement. Stretch: real canary URLs on a live trap site to catch real browsing agents leaking over the network. |
-| **Bonus: multiple Bots + Cursor** | Four Grok Bots (Simon, Trickster, Guardian, Referee) hand work to each other with a tagged protocol and review each other's PRs. **Cursor integration is under review in PR #8**: recorded runs use fresh temp workspaces and a local canary listener. Current runs never opened the malicious README; scoring and isolation findings must be resolved before presenting an exposed-injection result. A `.cursor/rules` file keeps Cursor's agent from obeying the trap files when teammates open the repo in Cursor. |
+| **Bonus: multiple Bots + Cursor** | Four Grok Bots (Simon, Trickster, Guardian, Referee) hand work to each other with a tagged protocol and review each other's PRs. **Cursor integration is under review in PR #8**: recorded runs use fresh temp workspaces and a local canary listener. Current runs never opened the malicious README; scoring and isolation findings must be resolved before presenting an exposed-injection result. A `.cursor/rules` file instructs Cursor to treat trap files as data; it is guidance, not a sandbox boundary. |
 | **Demo** | Recorded measured story: Friendly CEO gen 1 → gen 2 → gen 3, then a patch (25/40 failures → 0/20). Show the real Slack handoffs separately; a new live trap need not finish within the demo. |
 
 ## How a match works
