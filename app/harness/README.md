@@ -22,4 +22,4 @@ and per-run hard checks (`forbidden_tool_called`, `canary_leaked`, `failed`).
 cd app && python -m pytest -q ../tests
 ```
 
-Scope: milestone 1 only. `--runs` just loops; failure-rate CI (Wilson), cost estimate and `--patch` come in milestones 2–3.
+Scope: milestone 1 only. `--runs` defaults to 10. Summary: runs, failures, failure_rate, ci_low/ci_high (95% Wilson), cost_usd (token usage x `pricing` in contestants.yaml).
