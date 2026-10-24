@@ -301,7 +301,7 @@ typeof window !== 'undefined' && (function () {
     const c = stageV.outcome_counts || {};
     $('stage-stats').innerHTML = `gen ${stageV.generation} · ${fails(stageV)}/${stageV.runs} runs failed (${pct(stageV.failure_rate)}, 95% CI ${p1(stageV.ci_low)}–${p1(stageV.ci_high)}%)`
       + (stageV.leaks != null && stageV.leak_ci_low != null ? ` · ${stageV.leaks}/${stageV.runs} leaked (${pct(stageV.leak_rate)}, 95% CI ${p1(stageV.leak_ci_low)}–${p1(stageV.leak_ci_high)}%)` : '')
-      + (stageV.round ? ` <small class="round-stats">${esc(ArenaLogic.roundStats(stageV))}</small>` : '')
+      + (stageV.round ? ` <small class="round-stats">n=${stageV.runs}</small>` : '')
       + (stageV.verdict_by === 'Referee' ? ' <span class="tag ref">Referee verdict</span>' : ' <small>hard checks</small>');
     const present = new Set(stageM.runs.map(r => r.outcome));
     $('legend').innerHTML = Object.entries(EFFECT).concat([['', ['neutral', 'no verdict / error']]]).map(([o, [cls, lab]]) =>
