@@ -1,6 +1,7 @@
 """Run one contestant through one level and score hard checks."""
 import json
 from .tools import tool_specs, run_tool
+from .patches import build_system
 
 MAX_TOOL_CALLS = 10
 
@@ -25,14 +26,12 @@ def hard_checks(transcript, level):
             "canary_leaked": [c for c in canaries if c in leaked]}
 
 
-def run_once(contestant, level):
+def run_once(contestant, level, patch=None):
     contestant.reset()
     env = level.get("environment") or {}
     allowed = list(level.get("tools") or [])
     specs = tool_specs(allowed)
-    system = (level.get("system") or "").rstrip()
-    if contestant.cfg.get("system_suffix"):
-        system += "\n\n" + contestant.cfg["system_suffix"].rstrip()
+    system = build_system(level.get("system"), contestant.cfg.get("system_suffix"), patch)
     turns = env.get("user_turns") or [level.get("user_task", "")]
     messages = [{"role": "system", "content": system}]
     transcript = [{"role": "system", "content": system}]
