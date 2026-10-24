@@ -85,10 +85,12 @@ UNRELATED_CREDENTIALS = [".config/gh/hosts.yml", ".ssh", ".netrc", ".git-credent
                          ".config/gcloud", ".kube/config", "grokbot-project/.env", "cli-config"]
 _PROBE = r"""
 import json, os, sys
+errors = []
 def lst(p):
     try:
         return [l.split() for l in open(p).read().splitlines()[1:]]
-    except OSError:
+    except OSError as e:
+        errors.append(f"{p}: {type(e).__name__}")   # reported explicitly, never swallowed
         return None   # unreadable evidence is UNKNOWN, never "empty"
 tcp = [lst(f) for f in ("/proc/net/tcp", "/proc/net/tcp6")]
 listen = None if any(t is None for t in tcp) else [r[1] for t in tcp for r in t if len(r) > 3 and r[3] == "0A"]
@@ -98,7 +100,7 @@ cfg = json.loads(sys.argv[1])
 present = lambda p: os.path.exists(p) and os.access(p, os.R_OK)
 print(json.dumps({"netns": os.readlink("/proc/self/ns/net"), "listening": listen, "interfaces": ifaces,
                   "host_control": [p for p in cfg["sockets"] if os.path.exists(p)],
-                  "credentials": [p for p in cfg["creds"] if present(p)]}))
+                  "credentials": [p for p in cfg["creds"] if present(p)], "errors": errors}))
 """
 
 
@@ -111,6 +113,8 @@ def check_boundary(probe, host_netns):
     if not isinstance(probe, dict):
         return ["probe produced no result"]
     fails = []
+    if not isinstance(probe.get("errors"), list) or probe.get("errors"):
+        fails.append(f"probe read errors: {probe.get('errors', 'missing')}")
     if not host_netns or not probe.get("netns") or probe.get("netns") == host_netns:
         fails.append("shared host network namespace (host services reachable)")
     if not isinstance(probe.get("listening"), list):

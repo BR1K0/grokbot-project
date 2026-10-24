@@ -105,7 +105,7 @@ NEEDS_NETNS = pytest.mark.skipif(not sys.platform.startswith("linux") or not os.
 
 
 # 2. fail-closed isolation preflight
-GOOD = {"netns": "net:[2]", "listening": [], "interfaces": ["lo"], "host_control": [], "credentials": []}
+GOOD = {"netns": "net:[2]", "listening": [], "interfaces": ["lo"], "host_control": [], "credentials": [], "errors": []}
 
 
 def test_check_boundary_accepts_only_fully_verified_probe():
@@ -144,7 +144,15 @@ def test_live_run_refuses_before_any_setup(monkeypatch, tmp_path):
 
 
 def test_no_override_flag():
+    import inspect
     src = (REPO / "app/harness/cursor_contestant.py").read_text()
+    # no public entry point can take a parameter that supplies or skips verification
+    for fn in (cc.run_once, cc.main):
+        params = set(inspect.signature(fn).parameters)
+        assert not any(k in p.lower() for p in params for k in ("verif", "isolat", "skip", "unsafe", "override", "trust", "boundary")), (fn, params)
+    assert set(inspect.signature(cc.run_once).parameters) == {"level", "run_no", "timeout", "model"}
+    assert set(inspect.signature(cc.main).parameters) == {"argv"}
+    assert "_verified" not in src
     with pytest.raises(SystemExit):
         cc.main(["--out", "/dev/null", "--no-isolation"])
     for word in ("--unsafe", "--allow-shared", "--skip-isolation", "--no-isolation", "ARENA_ALLOW"):
@@ -196,7 +204,7 @@ def test_run_once_has_no_bypass_parameter(monkeypatch):
     assert calls == [1]
 
 
-@pytest.mark.parametrize("field", ["listening", "interfaces", "host_control", "credentials", "netns"])
+@pytest.mark.parametrize("field", ["listening", "interfaces", "host_control", "credentials", "netns", "errors"])
 @pytest.mark.parametrize("bad", ["missing", None, "garbage"])
 def test_missing_or_unknown_probe_evidence_refuses(field, bad):
     p = dict(GOOD)
@@ -230,6 +238,7 @@ def test_probe_reports_unreadable_proc_net_as_unknown(tmp_path):
                          capture_output=True, text=True, check=True).stdout
     probe = json.loads(out.strip().splitlines()[-1])
     assert probe["listening"] is None and probe["interfaces"] is None
+    assert any("/proc/net/tcp" in e for e in probe["errors"])
     assert any("unreadable" in f for f in cc.check_boundary({**probe, "netns": "net:[2]"}, "net:[1]"))
 
 
@@ -281,6 +290,21 @@ def test_excluded_pill_is_neutral_with_reason_and_evidence_rendered():
 
 def test_app_js_renders_caveat_pill_and_evidence():
     js = (REPO / "app/site/app.js").read_text()
-    assert "ArenaLogic.caveat(c)" in js and "ArenaLogic.caveat(v)" in js
+    assert "caveatHtml(c)" in js and "caveatHtml(v)" in js
     assert "ArenaLogic.pillState(r)" in js and "ArenaLogic.runEvidence(run)" in js
     assert "${r.failed ? '✗' : '✓'}" not in js
+
+
+def test_listening_missing_refuses():
+    p = dict(GOOD); p.pop("listening")
+    assert any("listening" in f for f in cc.check_boundary(p, "net:[1]"))
+
+
+def test_probe_error_marker_refuses():
+    assert any("read errors" in f for f in cc.check_boundary({**GOOD, "errors": ["/proc/net/tcp: PermissionError"]}, "net:[1]"))
+
+
+def test_caveat_rendered_on_board_match_and_replay():
+    js = (REPO / "app/site/app.js").read_text()
+    assert js.count("caveatHtml(") >= 4   # leaderboard row + level mini row + match row + replay
+    assert "confinement_note" in js and "result_label" in js
