@@ -128,3 +128,61 @@ def test_featured_chains_keep_round_identity(builds):
     chain = json.loads(subprocess.run(["node", "-e", js2], input=json.dumps(both), capture_output=True,
                                       text=True, check=True).stdout)
     assert len(chain) == 1 and chain[0].get("round") is None   # historical 8/10 wins; t14 kept apart
+
+
+# ---- hero totals: one population (Joel's review of PR #17) ----
+NEW = "fixture-roundonly"
+
+
+def _hero_build(tmp_path, monkeypatch):
+    """Historical C + C+safety; round t14: unpatched C, patched C, and a model that exists only in t14."""
+    root = tmp_path / "hero"; res = root / "results"
+    (res / "t14").mkdir(parents=True); (root / "levels").mkdir(); (root / "app/site").mkdir(parents=True)
+    shutil.copy(REPO / f"levels/{LEVEL}.yaml", root / "levels")
+    (res / f"{STEM}-{C}.log.json").write_text(json.dumps(_log(C, 8)))
+    (res / f"{STEM}-{C}+safety.log.json").write_text(json.dumps(_log(C + "+safety", 0)))
+    (res / f"t14/{STEM}-{C}.log.json").write_text(json.dumps(_log(C, 1)))
+    patched = {**_log(C, 2, n=6), "patch": {"name": "fixture-patch"}}
+    (res / f"t14/{STEM}-{C}.patched.log.json").write_text(json.dumps(patched))
+    (res / f"t14/{STEM}-{NEW}.log.json").write_text(json.dumps(_log(NEW, 3, n=4)))
+    for name, val in (("REPO", root), ("RESULTS", res), ("LEVELS", root / "levels"), ("SITE", root / "app/site")):
+        monkeypatch.setattr(bd, name, val)
+    monkeypatch.setattr(sys, "argv", ["build_data.py"])
+    bd.main()
+    return json.loads((root / "app/site/data.js").read_text().split("=", 1)[1].rstrip().rstrip(";"))
+
+
+def _node_fn(expr, data):
+    js = (f"const L=require({json.dumps(str(REPO / 'app/site/app.js'))});let s='';process.stdin.on('data',c=>s+=c)"
+          f".on('end',()=>{{const D=JSON.parse(s);console.log(JSON.stringify({expr}))}})")
+    return json.loads(subprocess.run(["node", "-e", js], input=json.dumps(data), capture_output=True,
+                                     text=True, check=True).stdout)
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="node not installed")
+def test_hero_totals_one_population_full_build(tmp_path, monkeypatch):
+    d = _hero_build(tmp_path, monkeypatch)
+    h = _node_fn("L.heroTotals(D.verdicts)", d)
+    vs = d["verdicts"]
+    assert h["runs"] == sum(v["runs"] for v in vs) == 10 + 10 + 10 + 6 + 4
+    assert h["historicalRuns"] == 20 and h["rounds"] == {"t14": 20}
+    assert h["historicalRuns"] + sum(h["rounds"].values()) == h["runs"]
+    assert h["unpatchedRuns"] + h["patchedRuns"] == h["runs"] and h["patchedRuns"] == 6
+    assert h["leaks"] == sum(v["leaks"] for v in vs) == 8 + 0 + 1 + 2 + 3   # leaks drawn from the same runs
+    assert h["models"] == sorted({v["model"] for v in vs}) and "fixture:" + NEW in h["models"]
+    # leaderboard stays historical-only; the round-only model is not in it but IS in the hero
+    assert NEW not in {c["contestant"] for c in d["leaderboard"]["contestants"]}
+    patched = next(v for v in vs if v["patched"])
+    assert patched["round"] == "t14" and patched["vs"] == C + " (unpatched)" \
+        and patched["id"].startswith("t14/")
+
+
+@pytest.mark.skipif(not shutil.which("node"), reason="node not installed")
+def test_round_label_and_every_surface_uses_it():
+    assert _node_fn("[L.roundLabel({round:'t14'}), L.roundLabel({})]", {}) == ["round t14", ""]
+    src = (REPO / "app/site/app.js").read_text()
+    for surface in ("$('replay-title').innerHTML = `${rtag(v)}", "`<div class=\"pcard\">${rtag(a)}",
+                    "`<div class=\"mini\"><span>${rtag(v)}", "Featured round <small>${best[0].round ? rtag(best[0])",
+                    "`<b>${rtag(best[0])}", "<p class=\"muted\">${rtag(best[0])}"):
+        assert surface in src, surface
+    assert "historical results only" in (REPO / "app/site/index.html").read_text()
