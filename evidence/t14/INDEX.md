@@ -11,7 +11,7 @@ Files here: [slack-thread.md](slack-thread.md) / [slack-thread.json](slack-threa
 **Explicitly missing / unknown (not omitted):**
 - **MISSING: gen4 [EVOLVE] tag.** No separate gen4 [EVOLVE] was ever posted; the gen4 [LEVEL READY] (row 13) served as the final evolution.
 - **UNKNOWN: Simon's triggers at steps 3, 7, 8, 11, 16.** Simon's conversation can't be read. Statements about Simon's actions are *Simon self-report, not independently verified*.
-- **PENDING: screen recording** of the Slack thread, not yet added. Kem's rule: T14 can't be marked passed if any handoff was human-relayed. Simon's own conversation can't be read (see Blockers), so his triggers are UNKNOWN unless stated otherwise.
+- **Screen recording: made, to be added in this PR (authorized by Kem).** A ~3.5 min recording of the live Slack thread was made on Simon's box, in Slack itself with nothing recreated. No recording file, frames or links are committed yet while a clean version is prepared. It does not change the result: T14 NOT PASSED (handoffs 0, 5, 9a, 15 HUMAN-RELAYED; Simon's triggers at 3, 7, 8, 11, 16 UNKNOWN; no separate gen4 [EVOLVE] posted, still missing). Kem's rule: T14 can't be marked passed if any handoff was human-relayed. Simon's own conversation can't be read (see Blockers), so his triggers are UNKNOWN unless stated otherwise.
 
 ## Trigger legend
 - **Bot-to-Bot**: the owning Bot's transcript shows the turn was woken by an `[agent]` message from another Bot (Simon, id `5229b899-…`), and/or the Bot's output went out through `SendToAgent` to Simon.
