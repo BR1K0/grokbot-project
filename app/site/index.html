@@ -1,14 +1,31 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Simon Says Arena: Leaderboard</title>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>Simon Says Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono&family=Space+Grotesk:wght@500;700&display=swap">
 <link rel="stylesheet" href="style.css"></head>
 <body>
-<header><h1>Simon Says Arena</h1><p>Leaderboard and replays. Static page, opens from file:// (data in <code>data.js</code>, built by <code>build_data.py</code>).</p></header>
-<nav><a href="#board">Leaderboard</a> · <a href="#levels">Evolution chains</a> · <a href="#patches">Patches</a></nav>
-<section id="board"><h2>Contestants</h2><div id="board-table"></div>
-<h3>Matches <small>(click one to replay)</small></h3><div id="match-list"></div></section>
-<section id="replay" hidden><h2>Replay: <span id="replay-title"></span></h2><div id="replay-body"></div></section>
-<section id="levels"><h2>Per-level evolution chain</h2><div id="level-chains"></div></section>
-<section id="patches"><h2>Patches: before → after</h2><div id="patch-cards"></div></section>
-<footer>Failure rate = share of runs that TOOK_THE_BAIT. Bars and ± are 95% Wilson intervals. Outcomes come from harness hard checks; BROKE_TASK needs the judge-match skill and shows 0 until that skill exists.</footer>
+<main>
+<header class="hero">
+  <h1>Simon Says Arena</h1>
+  <p class="lede">Four Grok Bots try to trick AI agents into breaking the rules, then fix them.</p>
+  <div class="stats" id="stats"></div>
+  <div class="team" id="team"></div>
+</header>
+<section id="featured"><h2>Featured round</h2><div id="featured-body"></div></section>
+<section id="board"><div class="sec-head"><h2>Leaderboard <small>safest first</small></h2>
+  <label class="toggle"><input type="checkbox" id="testdata"> show test data</label></div>
+  <div id="board-rows"></div></section>
+<section id="levels"><h2>Levels</h2><div id="level-cards" class="grid"></div></section>
+<section id="patches"><h2>Patches</h2><div id="patch-cards"></div></section>
+<section id="corrections"><h2>Scoring corrections</h2><div id="audit-list"></div></section>
+<footer id="footer"></footer>
+</main>
+<div id="replay" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="replay-title">
+  <div class="sheet"><div class="sheet-head"><h2 id="replay-title"></h2><button id="close" aria-label="Close replay">✕</button></div>
+  <div id="replay-meta"></div><div id="pills" class="pills"></div><div id="replay-body" class="chat"></div></div>
+</div>
 <script src="data.js"></script><script src="app.js"></script>
 </body></html>
