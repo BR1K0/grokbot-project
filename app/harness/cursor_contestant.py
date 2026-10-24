@@ -89,9 +89,11 @@ def lst(p):
     try:
         return [l.split() for l in open(p).read().splitlines()[1:]]
     except OSError:
-        return []
-listen = [r[1] for f in ("/proc/net/tcp", "/proc/net/tcp6") for r in lst(f) if len(r) > 3 and r[3] == "0A"]
-ifaces = [l.split(":")[0].strip() for l in open("/proc/net/dev").read().splitlines()[2:]]
+        return None   # unreadable evidence is UNKNOWN, never "empty"
+tcp = [lst(f) for f in ("/proc/net/tcp", "/proc/net/tcp6")]
+listen = None if any(t is None for t in tcp) else [r[1] for t in tcp for r in t if len(r) > 3 and r[3] == "0A"]
+dev = lst("/proc/net/dev")
+ifaces = None if dev is None else [l[0].rstrip(":").split(":")[0] for l in dev[1:] if l]
 cfg = json.loads(sys.argv[1])
 present = lambda p: os.path.exists(p) and os.access(p, os.R_OK)
 print(json.dumps({"netns": os.readlink("/proc/self/ns/net"), "listening": listen, "interfaces": ifaces,
@@ -109,16 +111,20 @@ def check_boundary(probe, host_netns):
     if not isinstance(probe, dict):
         return ["probe produced no result"]
     fails = []
-    if not probe.get("netns") or probe.get("netns") == host_netns:
+    if not host_netns or not probe.get("netns") or probe.get("netns") == host_netns:
         fails.append("shared host network namespace (host services reachable)")
-    if probe.get("listening"):
+    if not isinstance(probe.get("listening"), list):
+        fails.append("listening-socket evidence missing or unreadable")
+    elif probe["listening"]:
         fails.append(f"{len(probe['listening'])} host listening socket(s) visible")
-    extra = [i for i in probe.get("interfaces") or ["?"] if i != "lo"]
-    if extra or not probe.get("interfaces"):
-        fails.append(f"network not restricted: interfaces {extra or 'unknown'}")
-    if probe.get("host_control") is None or probe.get("host_control"):
+    ifs = probe.get("interfaces")
+    if not isinstance(ifs, list) or not ifs:
+        fails.append("interface evidence missing or unreadable")
+    elif [i for i in ifs if i != "lo"]:
+        fails.append(f"network not restricted: interfaces {[i for i in ifs if i != 'lo']}")
+    if not isinstance(probe.get("host_control"), list) or probe.get("host_control"):
         fails.append(f"host-control sockets present: {probe.get('host_control')}")
-    if probe.get("credentials") is None or probe.get("credentials"):
+    if not isinstance(probe.get("credentials"), list) or probe.get("credentials"):
         fails.append(f"unrelated credentials readable: {len(probe.get('credentials') or ['?'])}")
     return fails
 
@@ -146,7 +152,11 @@ def verify_isolation(prefix_factory=None):
         probe = run_probe(prefix)
     finally:
         shutil.rmtree(ws, ignore_errors=True); shutil.rmtree(fake_home, ignore_errors=True)
-    fails = check_boundary(probe, os.readlink("/proc/self/ns/net"))
+    try:
+        host_netns = os.readlink("/proc/self/ns/net")
+    except OSError:
+        host_netns = None   # no namespace evidence (e.g. macOS): check_boundary refuses
+    fails = check_boundary(probe, host_netns)
     if fails:
         raise IsolationRefused("live Cursor execution refused, disposable runtime not verified: " + "; ".join(fails))
     return probe
@@ -173,9 +183,9 @@ def bwrap_cmd(ws, fake_home, prompt, model=None):
     return cmd + [prompt]
 
 
-def run_once(level, run_no, timeout=180, model=None, _verified=None):
-    if _verified is None:
-        verify_isolation()   # fail closed before any workspace, credential copy or agent start
+def run_once(level, run_no, timeout=180, model=None):
+    """Public live entry point: ALWAYS verifies the boundary itself; no caller argument can skip it."""
+    verify_isolation()   # fail closed before any workspace, credential copy or agent start
     src = REPO / "levels/workspaces" / level["workspace"]
     ws = Path(tempfile.mkdtemp(prefix="arena-cursed-", dir="/tmp"))
     fake_home = Path(tempfile.mkdtemp(prefix="arena-home-", dir="/tmp"))
@@ -278,7 +288,7 @@ def main(argv=None):
     runs = []
     try:
         for i in range(a.start, a.start + a.runs):
-            r = run_once(level, i, a.timeout, _verified=verified)
+            r = run_once(level, i, a.timeout)
             runs.append(r)
             if repo_state() != base:
                 r["incident"] = "REPO CHANGED OUTSIDE TEMP DIR - series aborted"

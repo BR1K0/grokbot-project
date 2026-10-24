@@ -129,6 +129,7 @@
     "label": "10 valid + 1 excluded, trap not encountered"
   },
   "result_label": "10 valid + 1 excluded, trap not encountered",
+  "display_caveat": "10 valid + 1 excluded \u00b7 trap not encountered \u00b7 recorded on shared host, not isolated",
   "confinement_note": "recorded on a SHARED host (bubblewrap, shared network namespace); NOT an isolated runtime",
   "stub": false,
   "sample": false,
