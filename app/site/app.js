@@ -28,7 +28,19 @@ const ArenaLogic = (function () {
   };
   // round label for any surface that names a level + model (empty for historical groups)
   const roundLabel = v => v && v.round ? 'round ' + v.round : '';
-  return {leakTotal, pickChain, refereeCredit, refereeJudgement, heroTotals, roundLabel};
+  // featured patch: patched real group on the peak generation's level, same contestant and round (or null)
+  const featuredPatch = (chain, verdicts) => {
+    if (!chain || !chain.length) return null;
+    const peak = chain.reduce((a, v) => v.failure_rate > a.failure_rate ? v : a);
+    return verdicts.find(v => real(v) && v.patched && v.level === peak.level && v.contestant === peak.contestant
+      && (v.round || '') === (peak.round || '')) || null;
+  };
+  // featured intro clause: only promise a patched rerun when the chain actually has one
+  const featuredIntro = (chain, patch) => 'the recorded generation' + (chain && chain.length === 1 ? '' : 's')
+    + ' of this trap' + (patch ? ', then a patched rerun.' : '.');
+  // n + 95% CI line for round groups (empty for historical groups, which already show it per card)
+  const roundStats = v => v && v.round ? `n=${v.runs} · 95% CI ${(100 * v.ci_low).toFixed(1)}–${(100 * v.ci_high).toFixed(1)}%` : '';
+  return {leakTotal, pickChain, refereeCredit, refereeJudgement, heroTotals, roundLabel, featuredPatch, featuredIntro, roundStats};
 })();
 if (typeof module !== 'undefined') module.exports = ArenaLogic;
 typeof window !== 'undefined' && (function () {
@@ -83,7 +95,8 @@ typeof window !== 'undefined' && (function () {
   if (best) {
     const broke = best.find(v => v.failure_rate >= 0.3);
     const peak = best.reduce((a, v) => v.failure_rate > a.failure_rate ? v : a);
-    const patch = realV.find(v => v.patched && v.level === peak.level && v.contestant === peak.contestant && (v.round || '') === (peak.round || ''));
+    const patch = ArenaLogic.featuredPatch(best, D.verdicts);
+    const fin = best[best.length - 1];
     const cards = best.map(v => `<div class="gen ${v === broke ? 'broke' : ''}"><small>gen ${v.generation}</small>
       <div class="num">${pct(v.failure_rate)}${v === broke ? ' <span class="tag bait">broke</span>' : ''}</div>
       <small>${detail(v)}</small><p>${mutation(v)}</p></div>`);
@@ -91,10 +104,9 @@ typeof window !== 'undefined' && (function () {
       <small>${detail(patch)}</small><p>Patch rule added to the system prompt:</p>${PATCHES[patch.patch] ? `<blockquote>“${esc(PATCHES[patch.patch])}”</blockquote>` : ''}<p>${patch.vs_result === 'inconclusive' ? '<span class="tag inc">inconclusive</span>' : ''}</p>
       <small>No failures in these runs is not proof of zero risk: the upper bound is ${p1(patch.ci_high)}%.</small></div>`);
     document.querySelector('#featured h2').innerHTML = `Featured round <small>${best[0].round ? rtag(best[0]) : 'historical results'}</small>`;
-    $('featured-body').innerHTML = `<p class="muted">${rtag(best[0])}${esc(name(best[0].base_level))} vs <b style="color:var(--text)">${esc(best[0].contestant)}</b> · the recorded generations of this trap, then a patched rerun.</p>
+    $('featured-body').innerHTML = `<p class="muted">${rtag(best[0])}${esc(name(best[0].base_level))} vs <b style="color:var(--text)">${esc(best[0].contestant)}</b> · ${ArenaLogic.featuredIntro(best, patch)}${best[0].round ? ` <small class="round-stats">gen ${fin.generation}: ${esc(ArenaLogic.roundStats(fin))}</small>` : ''}</p>
       <div class="timeline">${cards.join('<span class="arrow">→</span>')}</div>
       <button class="btn" id="see-moment">See the moment it broke →</button>`;
-    const fin = best[best.length - 1];
     $('headline').innerHTML = `<b>${rtag(best[0])}${esc(name(best[0].base_level))} vs ${esc(best[0].contestant)}${best[0].round ? '' : ' (historical)'}:</b> gen ${fin.generation} <span class="bait">${fails(fin)}/${fin.runs} failed (${pct(fin.failure_rate)}, 95% CI ${p1(fin.ci_low)}–${p1(fin.ci_high)}%)</span>`
       + (patch ? `, then <span class="safe">${fails(patch)}/${patch.runs} after patch</span> (95% CI ${p1(patch.ci_low)}–${p1(patch.ci_high)}%)${fails(patch) === 0 ? `: no failures in ${patch.runs} runs, not proof of safety` : ''}.` : '.')
       + ' <a href="#featured">See the round ↓</a>';
@@ -180,7 +192,7 @@ typeof window !== 'undefined' && (function () {
   }
   function renderRun(v, m, ri) {
     const run = m.runs[ri];
-    $('replay-title').innerHTML = `${rtag(v)}${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}`;
+    $('replay-title').innerHTML = `${rtag(v)}${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}${v.round ? ` <small class="round-stats">${esc(ArenaLogic.roundStats(v))}</small>` : ''}`;
     const a = (m.audit || []).find(x => x.log === run.source_log);
     $('replay-meta').innerHTML = `Run #${run.run} · outcome (hard checks) <b style="color:${run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
       ${run.forbidden_tool_called && run.forbidden_tool_called.length ? ' · forbidden tools: ' + esc(run.forbidden_tool_called.join(', ')) : ''}
