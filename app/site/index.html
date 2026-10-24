@@ -13,6 +13,15 @@
   <div class="titlebar"><h1>Simon Says Arena</h1><button id="theme" class="ghost" type="button" aria-label="Toggle light or dark mode">◐ theme</button></div>
   <p class="lede">Four Grok Bots try to trick AI agents into breaking the rules, then fix them.</p>
   <p id="hero-caveat" class="hero-caveat" role="note" hidden></p>
+  <div class="pick-bar">
+      <div class="pick"><label for="match-search" id="match-label">Choose a match <small id="match-count"></small></label>
+        <p class="muted cur">Showing: <span id="match-current"></span></p>
+        <input id="match-search" type="search" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="match-list" aria-describedby="match-help" placeholder="Filter by level, contestant, patch, gen…">
+        <small id="match-help" class="sr-only">Type to filter. Use up and down arrows to move, Enter to choose, Escape to close.</small>
+        <div id="match-list" class="match-list" role="listbox" aria-labelledby="match-label" hidden></div></div>
+      <div id="stage-runs" class="pills" aria-label="Recorded runs in this match"></div>
+      <div id="legend" class="legend"></div>
+    </div>
   <div id="story" class="story" aria-live="polite"></div>
   <section id="stage" class="stage" aria-labelledby="stage-title">
     <div id="cast" class="cast" role="region" aria-labelledby="cast-title" tabindex="-1">
@@ -40,13 +49,6 @@
         <button id="c-restart" type="button">⏮ Restart</button><button id="c-back" type="button">◀ Step back</button><button id="c-step" type="button">Step ▶</button>
         <span id="c-pos" class="muted"></span></div>
       <div id="stage-step" class="stage-step" aria-live="polite"></div>
-      <div class="pick"><label for="match-search" id="match-label">Choose a match <small id="match-count"></small></label>
-        <p class="muted cur">Showing: <span id="match-current"></span></p>
-        <input id="match-search" type="search" role="combobox" autocomplete="off" aria-autocomplete="list" aria-expanded="false" aria-controls="match-list" aria-describedby="match-help" placeholder="Filter by level, contestant, patch, gen…">
-        <small id="match-help" class="sr-only">Type to filter. Use up and down arrows to move, Enter to choose, Escape to close.</small>
-        <div id="match-list" class="match-list" role="listbox" aria-labelledby="match-label" hidden></div></div>
-      <div id="stage-runs" class="pills" aria-label="Recorded runs in this match"></div>
-      <div id="legend" class="legend"></div>
     </div>
     <div id="evidence" class="evidence"></div>
   </section>
