@@ -10,6 +10,8 @@ Every AI agent is told *"only do what your user asks."* Simon Says Arena tests w
 
 Anyone can **submit a trap** in Slack in plain English. Simon turns it into a playable level, evolves it, and runs every contestant against it.
 
+**It's a team of four Grok Bots in an arms race.** **Trickster** (red team) designs and evolves traps; **Guardian** (blue team) writes the fixes; **Referee** is the only Bot allowed to score, so no Bot grades its own work; **Simon** runs the tournament and hands out the work. They coordinate in Slack #arena with a tagged handoff protocol and review each other's PRs. See [`bot/TEAM.md`](bot/TEAM.md).
+
 **Simon built the arena himself.** The harness, scoring and leaderboard site are written by the Grok Bot from the spec in `app/README.md`, one milestone per pull request, tested on its own computer before it asks for review. Humans write specs and review; Grok Bot does the work.
 
 Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
