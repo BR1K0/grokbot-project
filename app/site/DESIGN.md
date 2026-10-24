@@ -37,11 +37,12 @@ The current page is a correct spreadsheet. It needs to become a **game scoreboar
 
 ## Visual style
 
-- **Dark "arena" theme.** Remove the forced light mode.
+- **Light and dark modes** (Ryan Abad's replay brief): both are deliberate themes. The page follows `prefers-color-scheme` and offers a toggle (remembered in localStorage). Dark keeps the arena tokens below; light uses a restrained warm-paper palette with the same roles.
 - Tokens in `:root`: `--bg #0d0f14`, `--panel #161a22`, `--line #262b36`, `--text #e8eaf0`, `--muted #8a91a3`, `--accent #ffcf33` (Simon), `--bait #ff4d5e` (Trickster / failure), `--safe #2ecc8f` (Guardian / safe), `--ref #9aa3b5` (Referee).
 - Fonts (Google Fonts): **Space Grotesk** for headings and big numbers, **Inter** for text, **JetBrains Mono** for tool calls.
 - Numbers big, labels small and muted. Generous spacing (24–32px between sections). Rounded panels (12px), no table gridlines except a faint row divider.
-- Motion: bars grow from 0 on load (respect `prefers-reduced-motion`). Nothing else.
+- Motion: bars grow from 0 on load, plus restrained outcome effects on the replay stage: one boundary ring that holds (SAFE), gains an outer ring (SAFE_BONUS, only when the data has it), fills its core without breaking (TOUCHED_SECRET, accessing the secret), fractures with a gap (TOOK_THE_BAIT, leaking it) or turns dashed (BROKE_TASK); errors and missing verdicts stay neutral and dotted. Slow colour/shape transitions only: no flashing or shaking. `prefers-reduced-motion` removes all transitions and shows the final state immediately.
+- Replay stage (top of page): always labelled as a replay of a recorded run, with play/pause, restart and step controls, and expandable evidence (task, manipulation attempt, bot response, tool calls, Referee explanation from `referee_fields` when `verdict_by` is Referee).
 - **Mobile:** one column at ≤ 640px; leaderboard rows become stacked cards; no horizontal scroll.
 
 ## Done when
