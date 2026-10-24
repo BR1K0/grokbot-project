@@ -260,7 +260,7 @@ typeof window !== 'undefined' && (function () {
     $('pills').onclick = e => { const b = e.target.closest('.pill'); if (b) { renderRun(v, m, +b.dataset.k); const nb = $('pills').querySelector(`.pill[data-k="${b.dataset.k}"]`); if (nb) nb.focus({preventScroll: true}); history.replaceState(null, '', `#replay=${encodeURIComponent(v.id)}&run=${m.runs[+b.dataset.k].run}`); } };
     $('replay-body').innerHTML = (run.transcript || []).map((s, k) => {
       const bait = k === run.moment_index;
-      const chips = (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${sim(tc.arguments)})</span>`).join('<br>');
+      const chips = (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>');
       return `<div class="msg ${esc(s.role)} ${bait ? 'bait' : ''}" ${bait ? 'id="bait-step" tabindex="-1"' : ''}>${bait ? '<span class="baitlabel">⚠ took the bait here</span>' : ''}<span class="who">${esc(s.role)}${s.name ? ' · ' + esc(s.name) : ''}</span>${esc((s.content || '').trim())}${chips ? (s.content ? '\n' : '') + chips : ''}</div>`;
     }).join('') || '<p class="muted">No transcript stored for this run.</p>';
     const b = $('bait-step'), body = $('replay-body');
@@ -323,7 +323,7 @@ typeof window !== 'undefined' && (function () {
     const s = t[st.k];
     $('stage-step').innerHTML = !s ? (t.length ? '<p class="muted idle-prompt">Play to follow this recorded run step by step.</p>' : '<p class="muted idle-prompt">No transcript steps were recorded for this run.</p>') : `<span class="who">${esc(s.role)}${s.name ? ' · ' + esc(s.name) : ''}${st.k === run.moment_index ? ' · <b class="flag ' + cls + '">recorded moment</b>' : ''}</span>`
       + `<div class="step-text">${esc((s.content || '').trim().slice(0, 600))}${(s.content || '').length > 600 ? '…' : ''}</div>`
-      + (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${sim(tc.arguments)})</span>`).join(' ');
+      + (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join(' ');
   }
   // "Secret left the sandbox": only for runs whose canary_leaked is non-empty; real recorded tool call only.
   function leakCard(run, reached) {
@@ -354,7 +354,7 @@ typeof window !== 'undefined' && (function () {
     const calls = t.flatMap(s => s.tool_calls || []);
     const ref = v.verdict_by === 'Referee' ? ArenaLogic.refereeJudgement(v) : [];
     const d = (title, body, open) => `<details${open ? ' open' : ''}><summary>${title}</summary><div class="ev">${body}</div></details>`;
-    const pre = s => s ? `<pre>${sim((s.content || '').trim())}</pre>` : '<p class="muted">not recorded in this run</p>';
+    const pre = s => s ? `<pre>${esc((s.content || '').trim())}</pre>` : '<p class="muted">not recorded in this run</p>';
     $('evidence').innerHTML = `<h3>Evidence · run #${run.run} <small class="muted">recorded outcome (hard checks): ${run.excluded ? esc(run.outcome || 'no verdict') : olab(run.outcome, run)}</small></h3>`
       + `<div class="verdicts" id="verdicts"><div class="vd"><span class="tag">Per-run hard check · run #${run.run}</span> <b>${run.excluded ? 'EXCLUDED' : olab(run.outcome, run)}</b></div>`
       + `<div class="vd"><span class="tag ref">Match-level Referee verdict</span> ${ref.length ? ref.map(j => `<b>${esc(j.field)}:</b> ${esc(j.text)}`).join(' · ') : '<span class="muted">none: hard checks only</span>'}</div></div>`
@@ -363,7 +363,7 @@ typeof window !== 'undefined' && (function () {
       + d('The task', pre(task))
       + d('First tool result <small class="muted">(recorded; where the manipulation sits is not marked in the data)</small>', `<p class="sim-note" role="note">${SIMNOTE}</p>` + pre(tool))
       + d("The bot's response", pre(fin))
-      + d(`Tool calls (${calls.length})`, calls.map(tc => `<span class="chip">${esc(tc.name)}(${sim(tc.arguments)})</span>`).join('<br>') || '<p class="muted">none</p>')
+      + d(`Tool calls (${calls.length})`, calls.map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>') || '<p class="muted">none</p>')
       + d(`Referee's explanation <small class="muted">(match-level task judgment across all runs, not this run's hard check)</small>`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
         : `<p class="muted">No Referee verdict for this group: scored by <code>build_data.py</code> hard checks only.</p>`);
   }
