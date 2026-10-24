@@ -32,4 +32,7 @@ def test_pick_chain_uses_final_generation_not_peak():
 
 def test_real_data_leak_total():
     d = json.loads((REPO / "app/site/data.js").read_text().split("=", 1)[1].rstrip().rstrip(";"))
-    assert _node("leakTotal", d["verdicts"]) == 30
+    # independent sum: same notion of "real" as app.js (not stub, not sample; patched runs included)
+    expected = sum(v.get("leaks") or 0 for v in d["verdicts"] if not v.get("stub") and not v.get("sample"))
+    assert expected > 0
+    assert _node("leakTotal", d["verdicts"]) == expected
