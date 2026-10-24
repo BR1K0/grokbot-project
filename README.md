@@ -20,10 +20,10 @@ Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
 
 - Main contains real grok-4.3 / grok-4.7 measurements. Friendly CEO gen 3: **25/40 failures (62.5%; 95% CI 47.0–75.8%)**. The targeted patch: **0/20 (95% CI 0–16.1%)**.
 - Historical site verdicts are generated from hard checks. They do not by themselves prove a live Referee or Slack handoff.
-- The existing suite passed independently: **31 tests**. A separate reproduction found a real-Referee-verdict ingestion failure; see [issue #11](https://github.com/BR1K0/grokbot-project/issues/11).
-- Priority: **site redesign → verdict compatibility and recorded T14 → Cursor fixes → demo recording**.
+- The redesign is merged in [PR #13](https://github.com/BR1K0/grokbot-project/pull/13), with desktop/mobile screenshots and an independently checked replay. [PR #14](https://github.com/BR1K0/grokbot-project/pull/14) fixes Referee ingestion, validates consistent metrics, and labels Referee-owned judgments separately from hard-check measurements. **51 tests passed independently** on the integrated change.
+- Remaining priority: **recorded T14 → Cursor fixes → complete demo recording**.
 - [REVIEW_READINESS.md](REVIEW_READINESS.md) contains the detailed review and Bot messages; [DEMO.md](DEMO.md) contains the evidence-based script.
-- The redesign request has been delivered to #arena. Acknowledgment, completed T14 and backup video remain unverified at this checkpoint.
+- Simon acknowledged and completed the redesign and ingestion fixes. The real T14 round has been requested; completion is not yet verified. A 48-second backup walkthrough of the recorded-results site is saved in the reviewer's ChatGPT conversation; it does not contain live Slack handoff evidence.
 
 ## How it fits the judging criteria
 
