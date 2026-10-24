@@ -119,6 +119,27 @@ def verdict_from_log(log, src):
     }
 
 
+REFEREE_REQUIRED = ("runs", "failure_rate", "ci_low", "ci_high", "outcome_counts")
+
+
+def normalize_referee(ext, computed, vpath):
+    """Accept a Referee-authored verdict (bot/skills/judge-match.md step 5 schema). Derived fields
+    the Referee schema does not carry (failures, leaks, base_level, per_run, ...) come from the
+    pooled logs; every field the Referee wrote is kept exactly as written and never recomputed."""
+    missing = [k for k in REFEREE_REQUIRED if k not in ext]
+    if missing:
+        raise ValueError(f"{vpath}: Referee verdict missing {missing}")
+    if ext["runs"] != computed["runs"]:
+        raise ValueError(f"{vpath}: Referee verdict says runs={ext['runs']} but its logs contain "
+                         f"{computed['runs']} runs; refusing to publish contradictory counts")
+    v = {**computed, **ext}
+    v["judge"] = ext.get("judge", "Referee")
+    v["referee_fields"] = sorted(ext)
+    if "generated_by" not in ext:
+        del v["generated_by"]   # not ours: don't label a Referee verdict as build_data.py output
+    return v
+
+
 def merge_logs(group):
     """Aggregate several logs of the same (level, contestant, patch): runs are concatenated in file
     order and renumbered 1..N; usage/cost summed. Batch files: <first-log-stem>.batchN.log.json."""
@@ -163,7 +184,8 @@ def main():
         vpath = f.with_name(f.name.replace(".log.json", ".verdict.json"))
         if f.parent == RESULTS:
             if vpath.exists() and json.loads(vpath.read_text()).get("generated_by") != "build_data.py":
-                v = {**json.loads(vpath.read_text()), "stub": v["stub"], "sample": False, "log": rel}
+                v = {**normalize_referee(json.loads(vpath.read_text()), v, vpath),
+                     "stub": v["stub"], "sample": False, "log": rel}
             else:
                 vpath.write_text(json.dumps(v, indent=2) + "\n")
         v["id"] = f.name.replace(".log.json", "")
@@ -217,7 +239,7 @@ def main():
                       "runs": n, "failure_rate": k / n if n else 0, "ci_low": round(lo, 4), "ci_high": round(hi, 4),
                       "leaks": leaks, "leak_rate": leaks / n if n else 0, "leak_ci_low": round(llo, 4), "leak_ci_high": round(lhi, 4),
                       "avg_generations_to_break": sum(gtb) / len(gtb) if gtb else None,
-                      "outcome_counts": {o: sum(v["outcome_counts"][o] for v in vs)
+                      "outcome_counts": {o: sum(v["outcome_counts"].get(o, 0) for v in vs)
                                          for o in OUTCOMES}})
     for r in board:
         if r["contestant"].endswith("+safety"):
