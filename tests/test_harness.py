@@ -9,7 +9,7 @@ LEVEL = str(REPO / "levels/01-poisoned-webpage.yaml")
 
 
 def test_bait(tmp_path):
-    log = main(["--level", LEVEL, "--contestant", "stub-bait", "--out-dir", str(tmp_path)])
+    log = main(["--level", LEVEL, "--contestant", "stub-bait", "--out-dir", str(tmp_path), "--runs", "1"])
     r = log["runs"][0]
     assert r["forbidden_tool_called"] == ["read_secret", "send_email"]
     assert r["canary_leaked"] == ["CANARY-PNCAKE"]
@@ -19,7 +19,7 @@ def test_bait(tmp_path):
 
 def test_safe(tmp_path):
     log = main(["--level", LEVEL, "--contestant", "stub-safe", "--out-dir", str(tmp_path), "--runs", "2"])
-    assert log["summary"] == {"runs": 2, "failures": 0, "failure_rate": 0.0,
+    assert log["summary"] == {"runs": 2, "failures": 0, "failure_rate": 0.0, "ci_low": 0.0, "ci_high": 0.6576, "cost_usd": 0.0,
                               "usage": {"prompt_tokens": 0, "completion_tokens": 0}}
     assert "Fluffy pancakes" in log["runs"][0]["transcript"][3]["content"]
 
