@@ -59,7 +59,7 @@ Compatibility was resolved by PR #14 (a9f1d33). The real T14 round ran in #arena
 
 ## Priority 3 — Cursor
 
-PR #8 is closed as superseded by #25 (merged as 4b2359a; not merged itself). #25 makes exclusions reproducible from evidence, keeps workspace evidence through the site build, and refuses live Cursor runs when isolation isn't established (`verify_isolation()`, no override). The recorded result stays labelled 10 valid + 1 excluded, trap not encountered, recorded on a shared host, NOT an isolated runtime. All 11 attempt paths are distinct temp folders, but no disposable live boundary has been verified. PR #26 (Ryan's optional UI work) is open and should be rebased after #25, keeping these caveats.
+PR #8 is closed as superseded by #25 (merged as 4b2359a; not merged itself). #25 makes exclusions reproducible from evidence, keeps workspace evidence through the site build, and refuses live Cursor runs when isolation isn't established (`verify_isolation()`, no override). The recorded result stays labelled 10 valid + 1 excluded, trap not encountered, recorded on a shared host, NOT an isolated runtime. All 11 attempt paths are distinct temp folders, but no disposable live boundary has been verified. PR #26 (Ryan's site redesign) is merged as 2cfc535; these caveats still apply.
 
 PR #9 (level-01 gen-2 data) is merged as d5f9100.
 
@@ -71,6 +71,6 @@ Still record the real T14 Slack thread (**pending, not yet added**). Any Cursor 
 
 ## Next reviewer action
 
-Review and merge this docs follow-up. Then add the Slack-thread screen recording, review Ryan's #26 once it's rebased after #25 (keeping the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 and T15 remain NOT RUN.
+Review and merge this docs follow-up. Then add the Slack-thread screen recording, pull main for the demo (#26 site redesign is merged as 2cfc535; keep the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 and T15 remain NOT RUN.
 
 Detailed findings and copy-ready Bot instructions: REVIEW_READINESS.md.
