@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Simon Says Arena: Leaderboard</title>
+<link rel="stylesheet" href="style.css"></head>
+<body>
+<header><h1>Simon Says Arena</h1><p>Leaderboard and replays. Static page, opens from file:// (data in <code>data.js</code>, built by <code>build_data.py</code>).</p></header>
+<nav><a href="#board">Leaderboard</a> · <a href="#levels">Evolution chains</a> · <a href="#patches">Patches</a></nav>
+<section id="board"><h2>Contestants</h2><div id="board-table"></div>
+<h3>Matches <small>(click one to replay)</small></h3><div id="match-list"></div></section>
+<section id="replay" hidden><h2>Replay: <span id="replay-title"></span></h2><div id="replay-body"></div></section>
+<section id="levels"><h2>Per-level evolution chain</h2><div id="level-chains"></div></section>
+<section id="patches"><h2>Patches: before → after</h2><div id="patch-cards"></div></section>
+<footer>Failure rate = share of runs that TOOK_THE_BAIT. Bars and ± are 95% Wilson intervals. Outcomes come from harness hard checks; BROKE_TASK needs the judge-match skill and shows 0 until that skill exists.</footer>
+<script src="data.js"></script><script src="app.js"></script>
+</body></html>
