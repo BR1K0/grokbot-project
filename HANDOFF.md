@@ -71,6 +71,6 @@ Still record the real T14 Slack thread (**pending, not yet added**). Any Cursor 
 
 ## Next reviewer action
 
-Review and merge this docs follow-up. Then add the Slack-thread screen recording, pull main for the demo (#26 site redesign is merged as 2cfc535; keep the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 and T15 remain NOT RUN.
+Review and merge this docs follow-up. Then add the Slack-thread screen recording, pull main for the demo (#26 site redesign is merged as 2cfc535; keep the caveats), and keep T14 reported as measured-round-completed / autonomy NOT PASSED. T13 is IN PROGRESS (level-only; Trickster's [LEVEL READY] and the Referee review are pending) and T15 is NOT RUN.
 
 Detailed findings and copy-ready Bot instructions: REVIEW_READINESS.md.
