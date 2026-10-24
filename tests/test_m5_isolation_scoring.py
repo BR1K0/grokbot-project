@@ -122,8 +122,21 @@ def test_unverifiable_runtime_refuses():
         cc.verify_isolation(lambda ws, h: ["/bin/false"])
 
 
+def test_probe_with_no_result_refuses():
+    # fail-closed: a probe that cannot launch or prints nothing is a refusal, never a pass
+    with pytest.raises(cc.IsolationRefused, match="probe produced no result"):
+        cc.verify_isolation(lambda ws, h: ["/bin/true"])
+
+
+import shutil as _sh  # noqa: E402
+PROBE_PREREQS = pytest.mark.skipif(
+    not _sh.which("bwrap") or not cc.AGENT_DIR.is_dir() or not cc.AGENT_BIN.exists(),
+    reason="probe prerequisites missing (bwrap or the Cursor agent install it binds); "
+           "verify_isolation then refuses with 'probe produced no result', covered by test_probe_with_no_result_refuses")
+
+
 @NEEDS_NETNS
-@pytest.mark.skipif(not Path("/usr/bin/bwrap").exists(), reason="bwrap not installed")
+@PROBE_PREREQS
 def test_shared_host_bwrap_runtime_is_refused():
     with pytest.raises(cc.IsolationRefused, match="shared host network namespace"):
         cc.verify_isolation()
