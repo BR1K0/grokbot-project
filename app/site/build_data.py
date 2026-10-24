@@ -22,6 +22,11 @@ def is_stub(log):
     return log["contestant"].startswith("stub-") or str(log.get("model", "")).startswith("stub:")
 
 
+import sys as _sys
+_sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from harness.run import hard_checks  # noqa: E402
+
+
 def level_meta(level_id):
     for p in LEVELS.glob(f"{level_id}.yaml"):
         return yaml.safe_load(p.read_text())
@@ -121,8 +126,13 @@ def merge_logs(group):
     runs, logs = [], []
     for rel, log in group:
         logs.append(rel)
+        lvl = level_meta(log["level"])
         for r in log["runs"]:
-            runs.append({**r, "run": len(runs) + 1, "source_log": rel})
+            r = {**r, "run": len(runs) + 1, "source_log": rel}
+            if r.get("transcript") and lvl:   # re-score with the current hard checks
+                r.update(hard_checks(r["transcript"], lvl))
+                r["failed"] = bool(r["forbidden_tool_called"] or r["canary_leaked"])
+            runs.append(r)
     base["runs"], base["_logs"] = runs, logs
     return base
 

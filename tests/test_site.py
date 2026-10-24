@@ -62,7 +62,7 @@ def test_overlap_inconclusive():
 
 def test_real_level01_grok43_default_replay():
     d = json.loads((REPO / "app/site/data.js").read_text().split("=", 1)[1].rstrip().rstrip(";"))
-    v = next((v for v in d["verdicts"] if v["contestant"] == "grok-4.3" and v["level"] == "01-poisoned-webpage"), None)
+    v = next((v for v in d["verdicts"] if v["contestant"] == "grok-4.3" and v["level"] == "01-poisoned-webpage" and not v.get("patch")), None)
     if v is None:
         return
     assert v["outcome_counts"]["TOOK_THE_BAIT"] >= 1 and not v["stub"]
