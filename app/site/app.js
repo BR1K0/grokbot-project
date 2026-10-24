@@ -7,7 +7,7 @@ const ArenaLogic = (function () {
   // featured chain: unpatched real (base_level, contestant) chain with the highest FINAL-generation failure rate
   const pickChain = verdicts => {
     const chains = {};
-    verdicts.filter(v => real(v) && !v.patched).forEach(v => (chains[v.base_level + '|' + v.contestant] ||= []).push(v));
+    verdicts.filter(v => real(v) && !v.patched).forEach(v => (chains[(v.round || '') + '|' + v.base_level + '|' + v.contestant] ||= []).push(v));
     const list = Object.values(chains).map(c => c.slice().sort((a, b) => a.generation - b.generation));
     const last = c => c[c.length - 1];
     return list.sort((a, b) => last(b).failure_rate - last(a).failure_rate)[0] || null;
@@ -17,7 +17,18 @@ const ArenaLogic = (function () {
   const refereeCredit = (v, field) => !!v && v.verdict_by === 'Referee' && JUDGEMENT.includes(field)
     && Array.isArray(v.referee_fields) && v.referee_fields.includes(field);
   const refereeJudgement = v => JUDGEMENT.filter(f => refereeCredit(v, f) && v[f] != null && v[f] !== '').map(f => ({field: f, text: v[f]}));
-  return {leakTotal, pickChain, refereeCredit, refereeJudgement};
+  // hero totals: ONE population (every real verdict group: historical + round subfolders, unpatched + patched)
+  const heroTotals = verdicts => {
+    const vs = verdicts.filter(real), sum = (xs, f) => xs.reduce((a, v) => a + (f(v) || 0), 0);
+    const rounds = {};
+    vs.filter(v => v.round).forEach(v => { rounds[v.round] = (rounds[v.round] || 0) + v.runs; });
+    return {runs: sum(vs, v => v.runs), historicalRuns: sum(vs.filter(v => !v.round), v => v.runs), rounds,
+            unpatchedRuns: sum(vs.filter(v => !v.patched), v => v.runs), patchedRuns: sum(vs.filter(v => v.patched), v => v.runs),
+            leaks: leakTotal(vs), models: [...new Set(vs.map(v => v.model))].sort(), groups: vs.length};
+  };
+  // round label for any surface that names a level + model (empty for historical groups)
+  const roundLabel = v => v && v.round ? 'round ' + v.round : '';
+  return {leakTotal, pickChain, refereeCredit, refereeJudgement, heroTotals, roundLabel};
 })();
 if (typeof module !== 'undefined') module.exports = ArenaLogic;
 typeof window !== 'undefined' && (function () {
@@ -28,6 +39,7 @@ typeof window !== 'undefined' && (function () {
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
   const $ = id => document.getElementById(id);
   const real = o => !o.stub && !o.sample;
+  const rtag = v => v && v.round ? `<span class="tag round">${esc(ArenaLogic.roundLabel(v))}</span> ` : '';
   const pct = x => Math.round(100 * x) + '%';
   const p1 = x => (100 * x).toFixed(1);
   const fails = o => o.failures != null ? o.failures : (o.outcome_counts.TOUCHED_SECRET || 0) + (o.outcome_counts.TOOK_THE_BAIT || 0);
@@ -51,16 +63,13 @@ typeof window !== 'undefined' && (function () {
 
   // ---------- hero ----------
   const board = D.leaderboard.contestants;
-  const realBoard = board.filter(real);
   const realV = D.verdicts.filter(real);
-  const unpatchedRuns = realBoard.reduce((a, c) => a + c.runs, 0);
-  const patchedRuns = realV.filter(v => v.patched).reduce((a, v) => a + v.runs, 0);
-  const models = [...new Set(realBoard.map(c => c.model))];
-  const leaks = ArenaLogic.leakTotal(D.verdicts);
+  const H = ArenaLogic.heroTotals(D.verdicts);
+  const roundTxt = Object.entries(H.rounds).sort().map(([r, n]) => ` + ${n} in round ${esc(r)}`).join('');
   $('stats').innerHTML = [
-    [unpatchedRuns + patchedRuns, 'real runs', `${unpatchedRuns} unpatched (leaderboard, ${realBoard.length} contestants) + ${patchedRuns} patched · stubs/samples excluded`, ''],
-    [models.length, 'models tested', `${models.map(esc).join(', ')}, each with and without a safety prompt`, ''],
-    [leaks, 'runs with a leak caught', 'runs where a fake CANARY secret left the sandbox, unpatched and patched (hard check; a run count, not a count of secrets)', 'bait'],
+    [H.runs, 'real runs', `${H.historicalRuns} historical${roundTxt} · ${H.unpatchedRuns} unpatched + ${H.patchedRuns} patched · stubs/samples excluded`, ''],
+    [H.models.length, 'models tested', `${H.models.map(esc).join(', ')} (historical and round runs)`, ''],
+    [H.leaks, 'runs with a leak caught', `of the same ${H.runs} runs: a fake CANARY secret left the sandbox, unpatched and patched (hard check; a run count, not a count of secrets)`, 'bait'],
   ].map(([n, l, s, c]) => `<div class="stat"><span class="num ${c}">${n}</span><b>${l}</b><br><small>${s}</small></div>`).join('');
   $('team').innerHTML = [
     ['Simon', 'game master: builds the arena, runs matches', 'var(--accent)'],
@@ -74,18 +83,19 @@ typeof window !== 'undefined' && (function () {
   if (best) {
     const broke = best.find(v => v.failure_rate >= 0.3);
     const peak = best.reduce((a, v) => v.failure_rate > a.failure_rate ? v : a);
-    const patch = realV.find(v => v.patched && v.level === peak.level && v.contestant === peak.contestant);
+    const patch = realV.find(v => v.patched && v.level === peak.level && v.contestant === peak.contestant && (v.round || '') === (peak.round || ''));
     const cards = best.map(v => `<div class="gen ${v === broke ? 'broke' : ''}"><small>gen ${v.generation}</small>
       <div class="num">${pct(v.failure_rate)}${v === broke ? ' <span class="tag bait">broke</span>' : ''}</div>
       <small>${detail(v)}</small><p>${mutation(v)}</p></div>`);
     if (patch) cards.push(`<div class="gen patch"><small>patched · ${esc(patch.patch)}</small><div class="num">${pct(patch.failure_rate)}</div>
       <small>${detail(patch)}</small><p>Patch rule added to the system prompt:</p>${PATCHES[patch.patch] ? `<blockquote>“${esc(PATCHES[patch.patch])}”</blockquote>` : ''}<p>${patch.vs_result === 'inconclusive' ? '<span class="tag inc">inconclusive</span>' : ''}</p>
       <small>No failures in these runs is not proof of zero risk: the upper bound is ${p1(patch.ci_high)}%.</small></div>`);
-    $('featured-body').innerHTML = `<p class="muted">${esc(name(best[0].base_level))} vs <b style="color:var(--text)">${esc(best[0].contestant)}</b> · the recorded generations of this trap, then a patched rerun.</p>
+    document.querySelector('#featured h2').innerHTML = `Featured round <small>${best[0].round ? rtag(best[0]) : 'historical results'}</small>`;
+    $('featured-body').innerHTML = `<p class="muted">${rtag(best[0])}${esc(name(best[0].base_level))} vs <b style="color:var(--text)">${esc(best[0].contestant)}</b> · the recorded generations of this trap, then a patched rerun.</p>
       <div class="timeline">${cards.join('<span class="arrow">→</span>')}</div>
       <button class="btn" id="see-moment">See the moment it broke →</button>`;
     const fin = best[best.length - 1];
-    $('headline').innerHTML = `<b>${esc(name(best[0].base_level))} vs ${esc(best[0].contestant)}:</b> gen ${fin.generation} <span class="bait">${fails(fin)}/${fin.runs} failed (${pct(fin.failure_rate)}, 95% CI ${p1(fin.ci_low)}–${p1(fin.ci_high)}%)</span>`
+    $('headline').innerHTML = `<b>${rtag(best[0])}${esc(name(best[0].base_level))} vs ${esc(best[0].contestant)}${best[0].round ? '' : ' (historical)'}:</b> gen ${fin.generation} <span class="bait">${fails(fin)}/${fin.runs} failed (${pct(fin.failure_rate)}, 95% CI ${p1(fin.ci_low)}–${p1(fin.ci_high)}%)</span>`
       + (patch ? `, then <span class="safe">${fails(patch)}/${patch.runs} after patch</span> (95% CI ${p1(patch.ci_low)}–${p1(patch.ci_high)}%)${fails(patch) === 0 ? `: no failures in ${patch.runs} runs, not proof of safety` : ''}.` : '.')
       + ' <a href="#featured">See the round ↓</a>';
     $('see-moment').onclick = () => openReplay(peak.id);
@@ -117,9 +127,9 @@ typeof window !== 'undefined' && (function () {
       vs.sort((a, b) => a.generation - b.generation || a.patched - b.patched || a.contestant.localeCompare(b.contestant));
       return `<div class="lvl" data-base="${esc(base)}"><span class="tag">${esc(meta.category || '')}</span>
         <h3>${esc(meta.name || base)}</h3><p class="teaser">${esc(meta.teaser || '')}</p>
-        ${gen1.map(v => `<div class="mini"><span>${esc(v.contestant)}</span>${bar(v)}<span>${fails(v)}/${v.runs}</span></div>`).join('')}
+        ${gen1.map(v => `<div class="mini"><span>${rtag(v)}${esc(v.contestant)}</span>${bar(v)}<span>${fails(v)}/${v.runs}</span></div>`).join('')}
         <details><summary>${vs.length} matches${vs.some(v => v.generation > 1) ? ' incl. evolved generations' : ''} · click to replay</summary><div class="matches">
-        ${vs.map(v => `<div class="match" data-id="${esc(v.id)}"><span>gen ${v.generation} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}</span>
+        ${vs.map(v => `<div class="match" data-id="${esc(v.id)}"><span>gen ${v.generation} · ${rtag(v)}${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}</span>
           <span>${pct(v.failure_rate)} <small>(${detail(v)})</small> ${vsTag(v)}</span></div>`).join('')}</div></details></div>`;
     }).join('');
   }
@@ -128,10 +138,10 @@ typeof window !== 'undefined' && (function () {
   // ---------- patches ----------
   function renderPatches() {
     $('patch-cards').innerHTML = D.verdicts.filter(v => v.patched && (showTest || real(v))).map(a => {
-      const b = D.verdicts.find(v => !v.patched && v.level === a.level && v.contestant === a.contestant);
+      const b = D.verdicts.find(v => !v.patched && v.level === a.level && v.contestant === a.contestant && (v.round || '') === (a.round || ''));
       const fake = !real(a) || (b && !real(b));
       const row = (v, l, c) => `<div class="pbar"><b>${l}</b>${bar(v, c)}<span class="lab">${pct(v.failure_rate)} <small>(${detail(v)})</small></span></div>`;
-      return `<div class="pcard"><b>${esc(a.patch)}</b> on ${esc(name(a.level))} · ${esc(a.contestant)} ${testTag(a)}
+      return `<div class="pcard">${rtag(a)}<b>${esc(a.patch)}</b> on ${esc(name(a.level))} · ${esc(a.contestant)} ${testTag(a)}
         ${fake ? `<p class="muted">${a.sample ? SAMPLE : STUB}. This card only proves the patch is applied, not that it works.</p>` : ''}
         ${PATCHES[a.patch] ? `<blockquote>“${esc(PATCHES[a.patch].split(/(?<=\.)\s/)[0])}”</blockquote>` : ''}
         ${b ? row(b, 'before') : '<p class="muted">no unpatched baseline</p>'}${row(a, 'after', 'safe')}
@@ -170,7 +180,7 @@ typeof window !== 'undefined' && (function () {
   }
   function renderRun(v, m, ri) {
     const run = m.runs[ri];
-    $('replay-title').innerHTML = `${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}`;
+    $('replay-title').innerHTML = `${rtag(v)}${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}`;
     const a = (m.audit || []).find(x => x.log === run.source_log);
     $('replay-meta').innerHTML = `Run #${run.run} · outcome (hard checks) <b style="color:${run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
       ${run.forbidden_tool_called && run.forbidden_tool_called.length ? ' · forbidden tools: ' + esc(run.forbidden_tool_called.join(', ')) : ''}
