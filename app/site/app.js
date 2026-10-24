@@ -12,7 +12,12 @@ const ArenaLogic = (function () {
     const last = c => c[c.length - 1];
     return list.sort((a, b) => last(b).failure_rate - last(a).failure_rate)[0] || null;
   };
-  return {leakTotal, pickChain};
+  // Referee credit: only judgement fields the build actually took from a Referee verdict (never metrics/outcomes)
+  const JUDGEMENT = ['moment', 'defence', 'reasoning'];
+  const refereeCredit = (v, field) => !!v && v.verdict_by === 'Referee' && JUDGEMENT.includes(field)
+    && Array.isArray(v.referee_fields) && v.referee_fields.includes(field);
+  const refereeJudgement = v => JUDGEMENT.filter(f => refereeCredit(v, f) && v[f] != null && v[f] !== '').map(f => ({field: f, text: v[f]}));
+  return {leakTotal, pickChain, refereeCredit, refereeJudgement};
 })();
 if (typeof module !== 'undefined') module.exports = ArenaLogic;
 typeof window !== 'undefined' && (function () {
@@ -26,7 +31,7 @@ typeof window !== 'undefined' && (function () {
   const pct = x => Math.round(100 * x) + '%';
   const p1 = x => (100 * x).toFixed(1);
   const fails = o => o.failures != null ? o.failures : (o.outcome_counts.TOUCHED_SECRET || 0) + (o.outcome_counts.TOOK_THE_BAIT || 0);
-  const detail = o => `${fails(o)}/${o.runs} runs · 95% CI ${p1(o.ci_low)}–${p1(o.ci_high)}%`;
+  const detail = o => `${fails(o)}/${o.runs} runs · 95% CI ${p1(o.ci_low)}–${p1(o.ci_high)}% · hard checks`;
   const testTag = o => o.sample ? `<span class="tag test" title="${SAMPLE}">sample data</span>`
     : o.stub ? `<span class="tag test" title="${STUB}">stub · not a measurement</span>` : '';
   const vsTag = o => !o.vs ? '' : o.vs_result === 'inconclusive'
@@ -167,9 +172,10 @@ typeof window !== 'undefined' && (function () {
     const run = m.runs[ri];
     $('replay-title').innerHTML = `${esc(name(v.level))} · ${esc(v.contestant)}${v.patch ? ' + ' + esc(v.patch) : ''} ${testTag(v)}`;
     const a = (m.audit || []).find(x => x.log === run.source_log);
-    $('replay-meta').innerHTML = `Run #${run.run} · outcome <b style="color:${run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
+    $('replay-meta').innerHTML = `Run #${run.run} · outcome (hard checks) <b style="color:${run.failed ? 'var(--bait)' : 'var(--safe)'}">${esc(run.outcome)}</b>
       ${run.forbidden_tool_called && run.forbidden_tool_called.length ? ' · forbidden tools: ' + esc(run.forbidden_tool_called.join(', ')) : ''}
       ${run.canary_leaked && run.canary_leaked.length ? ' · leaked: ' + esc(run.canary_leaked.join(', ')) : ''} · match ${detail(v)}
+      ${ArenaLogic.refereeJudgement(v).map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')}
       ${a ? `<div class="audit" style="margin-top:8px">Re-scored ${esc(a.rescored_at)}: ${esc(a.rescored_reason)}${run.original_canary_leaked ? ' This run originally counted as leaking ' + esc(run.original_canary_leaked.join(', ')) + '.' : ''}</div>` : ''}`;
     $('pills').innerHTML = m.runs.map((r, k) => `<button class="pill ${r.failed ? 'fail' : ''} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}">#${r.run} ${r.failed ? '✗' : '✓'}</button>`).join('');
     $('pills').onclick = e => { const b = e.target.closest('.pill'); if (b) { renderRun(v, m, +b.dataset.k); history.replaceState(null, '', `#replay=${encodeURIComponent(v.id)}&run=${m.runs[+b.dataset.k].run}`); } };
