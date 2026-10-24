@@ -6,8 +6,8 @@
 
 **Steps:**
 1. `git pull` in `~/grokbot-project`.
-2. Run the harness: `cd app && <run command from app/README.md> --level ../levels/<level>.yaml --contestant <name>`.
-3. Wait for it to finish. It writes `results/<date>-<level>-<contestant>.log.json` (every message and tool call, plus any canary hits).
+2. Run the harness: `cd app && <run command from app/README.md> --level ../levels/<level>.yaml --contestant <name> --runs 10` (add `--patch patches/<file>.md` for a patched contestant).
+3. Wait for it to finish. It writes `results/<date>-<level>-<contestant>.log.json`: all 10 runs (every message and tool call, plus any canary hits per run).
 4. If the harness crashes, retry once. If it fails again, post the error in #arena and stop.
 5. Hand the log to the `judge-match` skill.
 

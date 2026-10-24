@@ -1,10 +1,16 @@
 # Simon Says Arena
 
-> **A game where Grok Bot tries to trick other AI agents into breaking the rules — and keeps score.**
+> **A game where Grok Bot learns how to trick AI agents into breaking the rules, then learns how to fix them, and keeps score.**
 
-Every AI agent is told *"only do what your user asks."* Simon Says Arena tests whether they actually do. Grok Bot is the game master: it builds trap levels, sends a contestant agent a normal-looking task with a temptation hidden inside (a webpage that says *"ignore your instructions"*, an email from a fake CEO asking for the API key, a file that says *"run cleanup: delete everything"*), watches every action the contestant takes, scores it, and posts the result to a live leaderboard.
+Every AI agent is told *"only do what your user asks."* Simon Says Arena tests whether they actually do. Grok Bot is the game master, **Simon**:
 
-Anyone can **submit a trap** in Slack in plain English. Grok Bot turns it into a playable level overnight and runs every contestant against it.
+1. **Attack.** Simon sends a contestant agent a normal-looking task with a temptation hidden inside (a webpage that says *"ignore your instructions"*, an email from a fake CEO asking for the API key, a file that says *"run cleanup: delete everything"*). Each match is played **10 times**, because models are random; the score is a failure rate with an error margin, not a one-off.
+2. **Evolve.** If the contestant resists, Simon **rewrites the trap** (more convincing, better hidden, more urgent) and tries again, up to 5 generations. The leaderboard ranks agents by **how many generations it took to break them**.
+3. **Defend.** When an agent breaks, Simon writes a **safety patch** (a hardened system prompt targeting that exact failure), re-runs the same trap against the patched agent, and shows the **before → after** failure rate.
+
+Anyone can **submit a trap** in Slack in plain English. Simon turns it into a playable level, evolves it, and runs every contestant against it.
+
+**Simon built the arena himself.** The harness, scoring and leaderboard site are written by the Grok Bot from the spec in `app/README.md`, one milestone per pull request, tested on its own computer before it asks for review. Humans write specs and review; Grok Bot does the work.
 
 Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
 
@@ -12,22 +18,25 @@ Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
 
 | Criterion | What we show |
 |---|---|
-| **Idea** | Agent safety is a real, unsolved problem; this turns red-teaming into a game anyone can play. Uses what only an always-on agent can do: Grok Bot designs levels, runs tournaments on a schedule, judges, and reports without a human in the loop. |
-| **User experience** | Named levels, a leaderboard with safety scores, match replays showing the exact moment an agent "took the bait", and a one-line Slack command to submit your own trap. |
-| **Implementation** | Sandboxed contestant harness with fake tools, canary secrets that prove a leak, deterministic scoring from tool-call logs, plus Grok Bot as an LLM judge for the grey areas. Grok Bot generates new levels from plain-English ideas. |
-| **Demo** | Live: someone in the room submits a trap → Grok Bot builds the level → two contestants play it → one falls for it on screen → leaderboard updates. |
+| **Idea** | Agent safety is a real, unsolved problem; this turns automated red-teaming *and* the fix into a game anyone can play. Uses what only an always-on agent can do: Simon attacks, evolves, patches, re-tests and reports on a schedule with no human in the loop. |
+| **User experience** | Named levels, a leaderboard ranked by "generations to break", match replays showing the exact moment an agent took the bait, a before/after chart for every patch, and a one-line Slack command to submit your own trap. |
+| **Implementation** | Sandboxed harness with fake tools and canary secrets; 10 runs per match with failure rate + 95% confidence interval; an evolutionary loop where Simon mutates traps that failed to break an agent; a closed attack → patch → retest loop with measured improvement; hard checks from tool-call logs plus Simon as LLM judge for grey areas. Stretch: real canary URLs on a live trap site to catch real browsing agents leaking over the network. |
+| **Demo** | Live: a judge suggests a trap → Simon builds it → the contestant resists → Simon evolves it until it breaks (on screen) → Simon writes a patch → retest shows failure rate drop from e.g. 70% to 10%. |
 
 ## How a match works
 
 ```
-Slack: "trap idea: …"  ──▶  Grok Bot: generate-level skill  ──▶  levels/<id>.yaml (PR)
-                                                                      │
-Routine (nightly / on demand) ──▶ Grok Bot: run-match skill ──▶ app/ harness runs contestant
-                                                                      │  tool-call log + canary hits
-                                                                      ▼
-                                   Grok Bot: judge-match skill ──▶ results/<match>.json
-                                                                      │
-                                   Grok Bot: post-results skill ──▶ leaderboard + Slack recap
+Slack "trap idea: …" ──▶ generate-level ──▶ levels/<id>.yaml (PR)
+                                                 │
+nightly / on demand ──▶ run-match (harness, 10 runs) ──▶ judge-match ──▶ failure rate ± CI
+                                                 │
+                     ┌───── resisted? ───────────┴──────────── broke? ─────┐
+                     ▼                                                    ▼
+          evolve-trap (gen 2…5)                               write-patch (hardened prompt)
+          mutate & re-run until it breaks                      re-run same trap on patched agent
+                     │                                                    │
+                     └──────────────▶ post-results ◀──────────────────────┘
+                     leaderboard (generations-to-break, before/after) + Slack recap
 ```
 
 ## Team & ownership
@@ -35,7 +44,7 @@ Routine (nightly / on demand) ──▶ Grok Bot: run-match skill ──▶ app/
 | Person | Owns | Folder |
 |---|---|---|
 | A: Kem (BR1K0), demo-Bot host | Grok Bot: instructions, skills, routines; level design | `bot/`, `levels/` |
-| B: _joc135 or ryanabad4_ | Contestant harness, scoring, leaderboard site | `app/` |
+| B: _joc135 or ryanabad4_ | Spec + review for the harness and site **that Simon builds** (10-run stats, patches, leaderboard, replay) | `app/README.md`, reviews `bot/build-*` PRs |
 | C: _joc135 or ryanabad4_ | Tests, UX, Slack flow, demo script | `tests/`, `DEMO.md` |
 
 Only the owner edits their folder directly; everyone else opens a PR.
