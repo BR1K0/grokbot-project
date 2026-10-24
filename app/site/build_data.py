@@ -235,6 +235,11 @@ def merge_logs(group):
     return base
 
 
+def round_of(f):
+    """Round label of a log/verdict file: None for top-level results/, else the subfolder name (e.g. 't14')."""
+    return f.parent.name if f.parent.parent == RESULTS else None
+
+
 def overlap(a, b, lo="ci_low", hi="ci_high"):
     return not (a[hi] < b[lo] or b[hi] < a[lo])
 
@@ -243,7 +248,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sample", action="store_true")
     a = ap.parse_args()
-    files = sorted(RESULTS.glob("*.log.json"))
+    # Top-level logs are the historical results; results/<round>/*.log.json (e.g. results/t14/) are
+    # separate rounds: their own groups, IDs, comparisons, Referee verdicts and featured chains.
+    files = sorted(RESULTS.glob("*.log.json")) + sorted(RESULTS.glob("*/*.log.json"))
     if a.sample:
         files += sorted((SITE / "sample").glob("*.log.json"))
     groups = {}
@@ -259,13 +266,17 @@ def main():
         log = merge_logs([(str(g.relative_to(REPO)), l) for g, l in items])
         v = verdict_from_log(log, rel)
         vpath = f.with_name(f.name.replace(".log.json", ".verdict.json"))
-        if f.parent == RESULTS:
+        rnd = round_of(f)
+        if f.parent == RESULTS or rnd is not None:   # Referee verdict lives next to its own logs
             if vpath.exists() and json.loads(vpath.read_text()).get("generated_by") != "build_data.py":
                 v = {**normalize_referee(json.loads(vpath.read_text()), v, vpath),
                      "stub": v["stub"], "sample": False, "log": rel}
             else:
                 vpath.write_text(json.dumps(v, indent=2) + "\n")
         v["id"] = f.name.replace(".log.json", "")
+        if rnd is not None:                   # historical groups get no "round" key: output byte-identical
+            v["round"] = rnd
+            v["id"] = f"{rnd}/{v['id']}"
         verdicts.append(v)
         matches.append({"id": v["id"], "runs": [{k: r.get(k) for k in
                         ("run", "transcript", "outcome", "moment_index", "forbidden_tool_called",
@@ -279,17 +290,18 @@ def main():
         base = None
         if v["patched"]:
             base = next((b for b in verdicts if not b["patched"] and b["level"] == v["level"]
-                         and b["contestant"] == v["contestant"]), None)
+                         and b["contestant"] == v["contestant"] and b.get("round") == v.get("round")), None)
         elif v["contestant"].endswith("+safety"):
             base = next((b for b in verdicts if not b["patched"] and b["level"] == v["level"]
-                         and b["contestant"] == v["contestant"][:-len("+safety")]), None)
+                         and b["contestant"] == v["contestant"][:-len("+safety")]
+                         and b.get("round") == v.get("round")), None)
         if base:
             v["vs"] = base["contestant"] + ("" if not v["patched"] else " (unpatched)")
             v["vs_result"] = ("inconclusive" if overlap(v, base) else
                               "lower failure rate" if v["failure_rate"] < base["failure_rate"] else "higher failure rate")
     # default replay: first real leaking run (level, contestant order)
     dr = None
-    for v in sorted(verdicts, key=lambda v: (v["stub"] or v["sample"], v["patched"], v["level"], v["contestant"])):
+    for v in sorted(verdicts, key=lambda v: (v["stub"] or v["sample"], "round" in v, v["patched"], v["level"], v["contestant"])):
         if v["stub"] or v["sample"]:
             continue
         m = next(x for x in matches if x["id"] == v["id"])
@@ -297,10 +309,11 @@ def main():
         if ri is not None:
             dr = {"verdict": verdicts.index(v), "run_index": ri, "id": v["id"], "run": m["runs"][ri]["run"]}
             break
-    # leaderboard: unpatched verdicts, per contestant
+    # leaderboard: unpatched HISTORICAL (top-level) verdicts, per contestant. Round subfolders are
+    # shown as their own labelled groups and are not pooled into the historical aggregate.
     board = []
-    for c in sorted({v["contestant"] for v in verdicts}):
-        vs = [v for v in verdicts if v["contestant"] == c and not v["patched"]]
+    for c in sorted({v["contestant"] for v in verdicts if "round" not in v}):
+        vs = [v for v in verdicts if v["contestant"] == c and not v["patched"] and "round" not in v]
         if not vs:
             continue
         n = sum(v["runs"] for v in vs); k = sum(v["failures"] for v in vs)
