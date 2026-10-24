@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light dark">
+<script>try{var t=localStorage.getItem("arena-theme");if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <title>Simon Says Arena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono&family=Space+Grotesk:wght@500;700&display=swap">
@@ -10,7 +11,31 @@
 <main>
 <header class="hero">
   <h1>Simon Says Arena</h1>
+  <div class="topbar"><button id="theme" class="ghost" type="button" aria-label="Toggle light or dark mode">◐ theme</button></div>
   <p class="lede">Four Grok Bots try to trick AI agents into breaking the rules, then fix them.</p>
+  <section id="stage" class="stage" aria-labelledby="stage-title">
+    <div class="stage-ring"><svg id="ring" viewBox="0 0 200 200" role="img" aria-labelledby="ring-label">
+      <circle class="ring-track" cx="100" cy="100" r="80"/>
+      <circle class="ring-bonus" cx="100" cy="100" r="92"/>
+      <circle class="ring-main" cx="100" cy="100" r="80" pathLength="100"/>
+      <path class="ring-crack" d="M100 12 L94 2 M100 12 L108 0" />
+      <circle class="ring-core" cx="100" cy="100" r="10"/>
+    </svg><p id="ring-label" class="ring-label" aria-live="polite"></p></div>
+    <div class="stage-side">
+      <p class="replay-badge">REPLAY · recorded run, not live</p>
+      <h2 id="stage-title"></h2>
+      <p id="stage-stats" class="muted"></p>
+      <button id="play" class="btn primary" type="button">▶ Play the replay</button>
+      <div class="controls" role="group" aria-label="Replay controls">
+        <button id="c-restart" type="button">⏮ Restart</button><button id="c-back" type="button">◀ Step back</button><button id="c-step" type="button">Step ▶</button>
+        <span id="c-pos" class="muted"></span></div>
+      <div id="stage-step" class="stage-step" aria-live="polite"></div>
+      <label class="muted pick">match <select id="stage-match"></select></label>
+      <div id="stage-runs" class="pills" aria-label="Recorded runs in this match"></div>
+      <div id="legend" class="legend"></div>
+    </div>
+    <div id="evidence" class="evidence"></div>
+  </section>
   <p class="headline" id="headline"></p>
   <div class="stats" id="stats"></div>
   <div class="team" id="team"></div>

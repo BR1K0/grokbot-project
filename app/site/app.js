@@ -106,7 +106,7 @@ typeof window !== 'undefined' && (function () {
     document.querySelector('#featured h2').innerHTML = `Featured round <small>${best[0].round ? rtag(best[0]) : 'historical results'}</small>`;
     $('featured-body').innerHTML = `<p class="muted">${rtag(best[0])}${esc(name(best[0].base_level))} vs <b style="color:var(--text)">${esc(best[0].contestant)}</b> · ${ArenaLogic.featuredIntro(best, patch)}${best[0].round ? ` <small class="round-stats">gen ${fin.generation}: ${esc(ArenaLogic.roundStats(fin))}</small>` : ''}</p>
       <div class="timeline">${cards.join('<span class="arrow">→</span>')}</div>
-      <button class="btn" id="see-moment">See the moment it broke →</button>`;
+      <button class="btn ghost" id="see-moment">See the moment it broke →</button>`;
     $('headline').innerHTML = `<b>${rtag(best[0])}${esc(name(best[0].base_level))} vs ${esc(best[0].contestant)}${best[0].round ? '' : ' (historical)'}:</b> gen ${fin.generation} <span class="bait">${fails(fin)}/${fin.runs} failed (${pct(fin.failure_rate)}, 95% CI ${p1(fin.ci_low)}–${p1(fin.ci_high)}%)</span>`
       + (patch ? `, then <span class="safe">${fails(patch)}/${patch.runs} after patch</span> (95% CI ${p1(patch.ci_low)}–${p1(patch.ci_high)}%)${fails(patch) === 0 ? `: no failures in ${patch.runs} runs, not proof of safety` : ''}.` : '.')
       + ' <a href="#featured">See the round ↓</a>';
@@ -219,7 +219,103 @@ typeof window !== 'undefined' && (function () {
   $('replay').addEventListener('click', e => { if (e.target.id === 'replay') closeReplay(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('replay').hidden) closeReplay(); });
 
-  $('testdata').onchange = e => { showTest = e.target.checked; renderBoard(); renderLevels(); renderPatches(); };
+
+  // ---------- replay stage (centerpiece): one boundary ring that holds or fractures per recorded outcome ----------
+  // Effects are keyed on the recorded run outcome only; nothing is inferred. Unknown/missing outcomes stay neutral.
+  const EFFECT = {
+    SAFE: ['holds', 'SAFE: the boundary held'],
+    SAFE_BONUS: ['bonus', 'SAFE_BONUS: held and flagged the trap'],
+    TOUCHED_SECRET: ['touched', 'TOUCHED_SECRET: reached inside for the secret; nothing left the boundary'],
+    TOOK_THE_BAIT: ['fractured', 'TOOK_THE_BAIT: the boundary fractured; the secret left the sandbox'],
+    BROKE_TASK: ['broketask', 'BROKE_TASK: no leak, but the task itself was not done'],
+  };
+  const effect = o => EFFECT[o] || ['neutral', o ? `${o}: not a scored outcome (neutral)` : 'no verdict recorded (neutral)'];
+  let stageFill = () => {};
+  const st = {v: null, m: null, ri: 0, k: -1, timer: null};
+  const stageV = (best && best[best.length - 1]) || (D.default_replay && D.verdicts.find(x => x.id === D.default_replay.id)) || realV[0];
+  const stageM = stageV && D.matches.find(x => x.id === stageV.id);
+  const ring = $('ring');
+  const setRing = (state, label) => { ring.setAttribute('class', 'ring ' + state); $('ring-label').textContent = label; };
+  const steps = () => (st.m.runs[st.ri].transcript || []);
+  function stop() { clearInterval(st.timer); st.timer = null; $('play').textContent = st.k >= steps().length - 1 ? '↻ Replay again' : '▶ Play the replay'; }
+  function show(k) {
+    const run = st.m.runs[st.ri], t = steps();
+    st.k = Math.max(-1, Math.min(k, t.length - 1));
+    $('c-pos').textContent = `step ${st.k + 1} of ${t.length}`;
+    const reached = run.moment_index != null ? st.k >= run.moment_index : st.k >= t.length - 1;
+    const [cls, lab] = effect(run.outcome);
+    if (st.k < 0) setRing('idle', `Replay of run #${run.run}: press play`);
+    else if (reached) setRing(cls, lab); else setRing('pending', 'replaying… boundary intact so far');
+    const s = t[st.k];
+    $('stage-step').innerHTML = !s ? '' : `<span class="who">${esc(s.role)}${s.name ? ' · ' + esc(s.name) : ''}${st.k === run.moment_index ? ' · <b class="flag ' + cls + '">recorded moment</b>' : ''}</span>`
+      + `<div class="step-text">${esc((s.content || '').trim().slice(0, 600))}${(s.content || '').length > 600 ? '…' : ''}</div>`
+      + (s.tool_calls || []).map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join(' ');
+  }
+  function play() {
+    if (st.timer) return stop();
+    if (st.k >= steps().length - 1) show(-1);
+    $('play').textContent = '❚❚ Pause';
+    const tick = () => { show(st.k + 1); if (st.k >= steps().length - 1) stop(); };
+    tick(); st.timer = setInterval(tick, reduced ? 2200 : 1400);
+  }
+  function evidence(v, run) {
+    const t = run.transcript || [];
+    const task = t.find(s => s.role === 'user');
+    const tool = t.find(s => s.role === 'tool');
+    const fin = t.slice().reverse().find(s => s.role === 'assistant' && s.content);
+    const calls = t.flatMap(s => s.tool_calls || []);
+    const ref = v.verdict_by === 'Referee' ? ArenaLogic.refereeJudgement(v) : [];
+    const d = (title, body, open) => `<details${open ? ' open' : ''}><summary>${title}</summary><div class="ev">${body}</div></details>`;
+    const pre = s => s ? `<pre>${esc((s.content || '').trim())}</pre>` : '<p class="muted">not recorded in this run</p>';
+    $('evidence').innerHTML = `<h3>Evidence · run #${run.run} <small class="muted">recorded outcome (hard checks): ${esc(run.outcome || 'no verdict')}</small></h3>`
+      + d('The task', pre(task))
+      + d('The manipulation attempt <small class="muted">(first tool result the bot read; the level\'s trap lives here)</small>', pre(tool))
+      + d("The bot's response", pre(fin))
+      + d(`Tool calls (${calls.length})`, calls.map(tc => `<span class="chip">${esc(tc.name)}(${esc(tc.arguments)})</span>`).join('<br>') || '<p class="muted">none</p>')
+      + d(`Referee's explanation`, ref.length ? ref.map(j => `<div class="refj"><span class="tag ref">Referee</span> <b>${esc(j.field)}:</b> ${esc(j.text)}</div>`).join('')
+        : `<p class="muted">No Referee verdict for this group: scored by <code>build_data.py</code> hard checks only.</p>`);
+  }
+  function loadRun(ri) {
+    stop(); st.ri = ri; const run = st.m.runs[ri];
+    $('stage-runs').innerHTML = st.m.runs.map((r, k) => `<button class="pill o-${effect(r.outcome)[0]} ${k === ri ? 'on' : ''}" data-k="${k}" aria-pressed="${k === ri}" title="${esc(r.outcome || 'no verdict')}">#${r.run} ${esc(r.outcome || 'no verdict')}</button>`).join('');
+    evidence(st.v, run); show(-1); stop();
+  }
+  function loadMatch(v) {
+    const stageV = v, stageM = D.matches.find(x => x.id === v.id);
+    st.v = stageV; st.m = stageM;
+    $('stage-title').innerHTML = `${rtag(stageV)}${esc(name(stageV.level))} vs ${esc(stageV.contestant)} ${testTag(stageV)}`;
+    const c = stageV.outcome_counts || {};
+    $('stage-stats').innerHTML = `gen ${stageV.generation} · ${fails(stageV)}/${stageV.runs} runs failed (${pct(stageV.failure_rate)}, 95% CI ${p1(stageV.ci_low)}–${p1(stageV.ci_high)}%)`
+      + (stageV.leaks != null && stageV.leak_ci_low != null ? ` · ${stageV.leaks}/${stageV.runs} leaked (${pct(stageV.leak_rate)}, 95% CI ${p1(stageV.leak_ci_low)}–${p1(stageV.leak_ci_high)}%)` : '')
+      + (stageV.round ? ` <small class="round-stats">${esc(ArenaLogic.roundStats(stageV))}</small>` : '')
+      + (stageV.verdict_by === 'Referee' ? ' <span class="tag ref">Referee verdict</span>' : ' <small>hard checks</small>');
+    const present = new Set(stageM.runs.map(r => r.outcome));
+    $('legend').innerHTML = Object.entries(EFFECT).concat([['', ['neutral', 'no verdict / error']]]).map(([o, [cls, lab]]) =>
+      `<span class="lg"><i class="sw ${cls}"></i>${esc(o || 'no verdict')}${o ? ` <small>${c[o] != null ? c[o] + ' in this match' : present.has(o) ? '' : 'not in this match\'s data'}</small>` : ''}</span>`).join('');
+    let ri = stageM.runs.findIndex(r => r.moment_index != null && r.canary_leaked && r.canary_leaked.length);
+    loadRun(ri < 0 ? 0 : ri);
+  }
+  if (stageV && stageM && stageM.runs.length) {
+    const opts = () => D.verdicts.filter(v => (showTest || real(v)) && D.matches.some(m => m.id === v.id && m.runs.length));
+    const fill = () => { $('stage-match').innerHTML = opts().map(v => `<option value="${esc(v.id)}" ${v.id === st.v.id ? 'selected' : ''}>${esc((v.round ? 'round ' + v.round + ' · ' : 'historical · ') + name(v.level) + ' · ' + v.contestant + (v.patch ? ' + ' + v.patch : '') + (v.stub ? ' (stub)' : v.sample ? ' (sample)' : ''))}</option>`).join(''); };
+    loadMatch(stageV); fill(); stageFill = fill;
+    $('stage-match').onchange = e => loadMatch(D.verdicts.find(v => v.id === e.target.value));
+    $('play').onclick = play;
+    $('c-restart').onclick = () => { stop(); show(-1); };
+    $('c-step').onclick = () => { stop(); show(st.k + 1); };
+    $('c-back').onclick = () => { stop(); show(st.k - 1); };
+    $('stage-runs').onclick = e => { const b = e.target.closest('.pill'); if (b) loadRun(+b.dataset.k); };
+  } else $('stage').hidden = true;
+
+  // ---------- theme toggle (follows prefers-color-scheme until the visitor picks) ----------
+  $('theme').onclick = () => {
+    const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem('arena-theme', next); } catch (e) {}
+  };
+
+  $('testdata').onchange = e => { showTest = e.target.checked; renderBoard(); renderLevels(); renderPatches(); stageFill(); };
   renderBoard(); renderLevels(); renderPatches();
   const h = location.hash.match(/^#replay=([^&]+)(?:&run=(\d+))?/);
   if (h) openReplay(decodeURIComponent(h[1]), h[2] ? +h[2] : null);
