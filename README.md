@@ -8,7 +8,7 @@ Hackathon entry for **Track 4: Best Use of xAI's Grokbots**.
 
 | Person | Owns | Folder |
 |---|---|---|
-| A | Bot behaviour: instructions, skills, routines | `bot/` |
+| A: Kem (BR1K0), demo-Bot host | Bot behaviour: instructions, skills, routines | `bot/` |
 | B | What the Bot acts on (app / API / sheet) | `app/` |
 | C | Tests, UX, demo script | `tests/`, `DEMO.md` |
 
@@ -16,7 +16,7 @@ Only the owner edits their folder directly; everyone else opens a PR.
 
 ## How the Bot is built from this repo
 
-The **demo Bot** lives on one account: **_<name>_**. This repo is the source of truth. The live Bot must always match `main`.
+The **demo Bot** lives on one account: **Kem (GitHub: BR1K0)**. This repo is the source of truth. The live Bot must always match `main`.
 
 **Option A: paste (always works)**
 1. Merge the PR.
