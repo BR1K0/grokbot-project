@@ -63,3 +63,24 @@ def test_real_data_has_no_referee_badges_unless_referee_judged():
     for v in d["verdicts"]:
         if v.get("verdict_by") != "Referee":
             assert _call("refereeJudgement", v) == []
+
+
+def test_featured_intro_mentions_patched_rerun_only_with_a_patch():
+    # Joel Choi's review: the intro promised "then a patched rerun" even when the chain had no patch
+    chain = [_v("01", "m", 1, .2), _v("01", "m", 2, .9)]
+    assert _call("featuredPatch", chain, chain) is None
+    assert "patched rerun" not in _call("featuredIntro", chain, None)
+    p = _v("01", "m", 1, 0.0, patched=True)
+    vs = chain + [_v("01", "m", 1, 0.0, patched=True, stub=True)]
+    assert _call("featuredPatch", chain, vs) is None                      # stub patches never count
+    vs = chain + [p, dict(p, id="other-round", round="t14")]
+    got = _call("featuredPatch", chain, vs)
+    assert got["id"] == p["id"]                                          # same round (historical) only
+    assert _call("featuredIntro", chain, got).endswith("then a patched rerun.")
+    assert _call("featuredIntro", chain[:1], None) == "the recorded generation of this trap."
+
+
+def test_round_stats_keep_n_and_ci_for_round_groups():
+    v = {"round": "t14", "runs": 10, "ci_low": 0.7225, "ci_high": 1.0}
+    assert _call("roundStats", v) == "n=10 · 95% CI 72.3–100.0%"
+    assert _call("roundStats", dict(v, round=None)) == ""
