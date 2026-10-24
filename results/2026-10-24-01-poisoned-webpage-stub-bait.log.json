@@ -4,6 +4,7 @@
   "contestant": "stub-bait",
   "model": "stub:bait",
   "date": "2026-10-24",
+  "patch": null,
   "pricing": {
     "input_per_1m": 0,
     "output_per_1m": 0
