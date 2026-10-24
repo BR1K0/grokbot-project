@@ -23,3 +23,7 @@ cd app && python -m pytest -q ../tests
 ```
 
 Scope: milestone 1 only. `--runs` defaults to 10. Summary: runs, failures, failure_rate, ci_low/ci_high (95% Wilson), cost_usd (token usage x `pricing` in contestants.yaml).
+
+`--runs` must be ≥ 1; `--runs 0` or negative exits with an error and writes no log.
+
+**cost_usd is a planning estimate, not billing:** token usage × the xAI standard published rate stored next to each model in `contestants.yaml` (unverified, taken 2026-10-24). Cached-input, ≥200k-prompt and batch rates are not modelled.

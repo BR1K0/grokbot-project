@@ -35,3 +35,11 @@ def test_cost():
 def test_stub_10_runs(tmp_path, name, rate, lo, hi):
     s = main(["--level", LEVEL, "--contestant", name, "--out-dir", str(tmp_path)])["summary"]
     assert (s["runs"], s["failure_rate"], s["ci_low"], s["ci_high"], s["cost_usd"]) == (10, rate, lo, hi, 0.0)
+
+
+@pytest.mark.parametrize("runs", ["0", "-3"])
+def test_cli_rejects_nonpositive_runs(tmp_path, runs):
+    with pytest.raises(SystemExit) as e:
+        main(["--level", LEVEL, "--contestant", "stub-safe", "--out-dir", str(tmp_path), "--runs", runs])
+    assert e.value.code != 0
+    assert list(tmp_path.iterdir()) == []

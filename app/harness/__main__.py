@@ -17,6 +17,8 @@ def main(argv=None):
     p.add_argument("--runs", type=int, default=10)
     p.add_argument("--out-dir", default=str(REPO / "results"))
     a = p.parse_args(argv)
+    if a.runs < 1:
+        p.error(f"--runs must be at least 1 (got {a.runs})")
     load_env()
     level_path = Path(a.level)
     level = yaml.safe_load(level_path.read_text())
