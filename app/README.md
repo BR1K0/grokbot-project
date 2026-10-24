@@ -7,6 +7,7 @@
 2. **Hard checks + stats:** canary/forbidden-tool detection, `--runs 10`, failure rate with 95% Wilson confidence interval.
 3. **Patches:** `--patch <file>` appends a patch to the contestant's system prompt.
 4. **Leaderboard + replay site.**
+   4b. **Site redesign** per `app/site/DESIGN.md` (game scoreboard, featured round, team strip, dark theme).
 5. **Cursor agent contestant** (real coding agent, real files, sandboxed). *Bonus criterion: Cursor integration.*
 6. *(stretch)* **Live canary site.**
 
