@@ -1,6 +1,6 @@
 # Simon Says Arena
 
-## ▶️ [Try it live](https://br1k0.github.io/grokbot-project/app/site/) · 🎬 [Watch the demo video](https://www.youtube.com/watch?v=OcLKoMXWabw)
+## ▶️ [Try it live](https://br1k0.github.io/grokbot-project/app/site/)
 
 > **Four Grok Bots red-team AI agents: they build traps, evolve them until an agent breaks, then write and measure the fix.**
 
